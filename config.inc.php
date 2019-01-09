@@ -1,13 +1,13 @@
 <?php
 /*
-Der Wert adressen wird zentral an einer Stelle gespeichert, um ihn besser ansprechen zu können.
+	Name of addon.
 */
 $mypage = 'api_json';
 
 
 /*
-AddOn-ID, damit es weniger leicht zu Komplikationen mit anderen AddOns kommt.
-Besonders wichtig, wenn man das AddOn im REDAXO-Download veröffentlichen will.
+AddOn-ID, still a *dummy*
+will be adjusted before publish to redaxo.org
 */
 $REX['ADDON']['rxid'][$mypage] = '2657';
 
@@ -22,7 +22,7 @@ Die Page-Variable regelt die URL, mit der auf das AddOn zugegriffen wird.
 AddOn-Name, wie er im Menü angezeigt werden soll.
 Ist natürlich nur dann nötig, wenn das AdOn überhaupt einen Menüpunkt erzeugen soll.
 */
-// $REX['ADDON']['name'][$mypage] = 'Adressliste';
+// $REX['ADDON']['name'][$mypage] = 'JSON Api';
 
 
 /*
@@ -30,7 +30,7 @@ Benutzer-Recht: Wenn man im AddOn Rechte verwaltet, muss diese Variable gesetzt 
 Man muss dann einem Redakteur explizit das Recht zuweisen,
 damit er im Backend auf das AddOn im Backend zugreifen kann.
 */
-// $REX['ADDON']['perm'][$mypage] = 'adressen[]';
+// $REX['ADDON']['perm'][$mypage] = 'apijson[]';
 // $REX['PERM'][] = 'adressen[]';
 
 
@@ -43,7 +43,6 @@ $REX['ADDON']['author'][$mypage] = "Thomas Kühne";
 
 /*
 Hier wird der Tabellen-Prefix verwaltet.
-In unserem spezielle Fall und in einer Standardinstallation lautet er "rex_553_".
 */
 // $REX['ADDON']['dbpref'][$mypage]=$REX['TABLE_PREFIX'].$REX['ADDON']['rxid'][$mypage].'_';
 

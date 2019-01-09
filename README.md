@@ -18,8 +18,8 @@
 The structure of JSON is similar to Redaxo article structure but simplified.
 But you can easily get titles or full body contents of several sub-articles at once.
 
-Examples:
+You specify a valid article id or get root categories.
 
-* `mydomain.tld/api` provides an entry point and suggestions.
-* `mydomain.tld/api/articles/4` shows title of article AND list of all immediate sub-category articles.
-* *Issue:* Adding `/content` still has errors.
+You reequest rendered article content by appending `/content`/
+
+Try `mydomain.tld/api`. It provides an entry point and suggestions. More sensible examples can be seen in the response itself.
