@@ -4,20 +4,19 @@
 
 ## Requirements
 
-Redaxo 4.x
-
-Only tested with Redaxo 4.7.2 !
+* Redaxo 4.x (Only tested with Redaxo 4.7.2!)
+* Mod Rewrite access.
 
 ## Installation
 
 1. *Copy* all files into  a sub directory "*api_json*" under redaxo/include/addons/ of your Redaxo 4.x installation. Then start "Install" on the "Addons" page in the backend.
 
-2. Add a *rewrite rule* to your .htaccess or apache config. Just have all links starting with 'api/' to convert to param like this: `RewriteRule ^api[/]?(.*)$ index.php?api=$1`. You can test the api without rewrite rule. Type e.g. `mydomain.tld/index.php?api=`.
+2. Add a *rewrite rule* to your .htaccess or apache config. Just convert all links starting with 'api/' to a param like this: `RewriteRule ^api[/]?(.*)$ index.php?api=$1`. You can test the api without a rewrite rule. Type e.g. `mydomain.tld/index.php?api=articles/4`.
 
 ## Usage
 
 The structure of JSON is similar to Redaxo article structure but simplified.
-But you can easily get titles or full body contents of several articles at once.
+But you can easily get titles or full body contents of several sub-articles at once.
 
 Examples:
 

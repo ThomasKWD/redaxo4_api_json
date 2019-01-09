@@ -55,9 +55,11 @@ Dieser Schlüssel muss natürlich eindeutig sein.
 // $I18N_adressen = new i18n($REX['LANG'], $REX['INCLUDE_PATH'].'/addons/'.$mypage.'/lang/');
 
 function kwd_startJsonApi() {
-	// echo 'hheeeeeeeee';
-	$kwdApi = new kwd_jsonapi(); // ??? add parameter from config as server string *index*
-	$kwdApi->sendResponse();
+	global $REX;
+	if (!$REX['REDAXO']) { // ??? could also be done by 'class_exists('kwd_jsonapi')'
+		$kwdApi = new kwd_jsonapi(); // ??? add parameter from config as server string *index*
+		$kwdApi->sendResponse();
+	}
 }
 
 /*
@@ -70,9 +72,9 @@ if ($REX['REDAXO']) {
 	// Gilt nur für das Frontend
 	// bitte require ... auskommentieren.
 	require $REX['INCLUDE_PATH'].'/addons/'.$mypage.'/classes/class.kwd_jsonapi.inc.php';
-	kwd_startJsonApi();
 }
 
-
-// rex_register_extension('OUTPUT_BUFFER', 'kwd_startJsonApi');
+// all other must be included because we request article contents
+// which will need e.g. a class from the "extensions" addon
+rex_register_extension('ADDONS_INCLUDED', 'kwd_startJsonApi');
 ?>
