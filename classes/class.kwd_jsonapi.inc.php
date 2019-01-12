@@ -3,11 +3,26 @@
 class kwd_jsonapi {
 
 	const APIMARKER = 'api=';
+	const SERVER_QUERY_STRING = 'QUERY_STRING';
+	const SERVER_REQUEST_SCHEME = 'REQUEST_SCHEME';
+	const SERVER_REQUEST_METHOD = 'REQUEST_METHOD';
+
 	private $api = '';
+	private $baseUrl = '';
 
 	// ??? how works with unset $serverQueryString
 	function __construct($serverQueryString = '') {
-		$this->api = $_SERVER[$serverQueryString ? $serverQueryString  : 'QUERY_STRING'];
+		global $REX;
+		$this->baseUrl = $_SERVER[self::SERVER_REQUEST_SCHEME] .'://'.$REX['SERVER'];
+
+		// check for trailing '/'
+		// - for the case we have *1 or more* trailing slashes
+		while (substr($this->baseUrl,-1) == '/') {
+			$this->baseUrl = substr($this->baseUrl,0,strlen($this->baseUrl) - 1);
+		}
+		$this->baseUrl  .= '/api/';
+
+		$this->api = $_SERVER[$serverQueryString ? $serverQueryString  : self::SERVER_QUERY_STRING];
 	}
 
 	function getSubLink($id,$name = '') {
@@ -26,11 +41,9 @@ class kwd_jsonapi {
 		}
 	}
 
+	/// ??? make var for server name
 	function apiLink($queryString) {
-		global $_SERVER,$REX;
-		// !! we assume server has trailing '/'
-		// ??? check for trailing '/'
-		return $_SERVER['REQUEST_SCHEME'] .'://'.$REX['SERVER'] .'api/'.$queryString;
+		return $this->baseUrl .$queryString;
 	}
 
 	function articleLink($article_id,$clang_id = 0,$showContent = false) {
@@ -43,14 +56,13 @@ class kwd_jsonapi {
 	public function sendResponse() {
 
 		$api = $this->api;
-
 		if ($api && strstr($api,self::APIMARKER)) {
 
 			// START
 			// ob_end_clean(); // remove caching and thus prevent changes by extension_point "OUTPUT_BUFFER"
 
 			// immediately stop on PUT/DELETE/POST commands
-			if (strtolower($_SERVER['REQUEST_METHOD']) != 'get')  {
+			if (strtolower($_SERVER[self::SERVER_REQUEST_METHOD]) != 'get')  {
 				header('HTTP/1.0 403 Forbidden');
 				$response['error']['message'] = 'You can only GET data.';
 			}
@@ -58,7 +70,7 @@ class kwd_jsonapi {
 				header('Access-Control-Allow-Origin: *');
 
 				// used to make api links clickable
-				$host = $_SERVER['REQUEST_SCHEME'] .'://'.$REX['SERVER']; // ???: check id SERVER var correct in all cases!
+				$host = $this->baseUrl; // ???: check id SERVER var correct in all cases!
 
 				// asociate array which is written out as JSON object
 				$request = explode('/',str_replace(self::APIMARKER,'',$api));
@@ -257,9 +269,9 @@ class kwd_jsonapi {
 				echo json_encode($response);
 				exit();
 			}
-			
+
 			// ! we don't exit if response could not been build
-			// ! usually this allows to show normal start page of Redaxo project. 
+			// ! usually this allows to show normal start page of Redaxo project.
 		}
 		else {
 			// do nothing

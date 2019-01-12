@@ -1,12 +1,12 @@
 # api_json
 
-## Abstract 
+## Abstract
 
 [Redaxo 4.x](https://redaxo.org) *addon* to provide a _read only_ JSON api for article content.
 
 ## Requirements
 
-### Software 
+### Software
 
 * PHP 5.4
 * Redaxo 4.x (Only tested with Redaxo 4.6.1 and 4.7.2!)
@@ -15,15 +15,16 @@
 
 ### Configuration
 
-The addon uses 3 fields of the PHP global `$_SERVER` which must be existent and have the proper content:
+The addon uses 3 fields of the PHP superglobal `$_SERVER` which must be existent and have the proper content.
+Under a default apache + php configuration these should not be a problem - but you should know it:
 
 * `$_SERVER['REQUEST_METHOD']` containing the http method e.g. 'GET' (case insensitive')
-* `$_SERVER['REQUEST_SCHEME']` containing the protocol ("http://" or "https:")
+* `$_SERVER['REQUEST_SCHEME']` containing the protocol ("http" or "https")
 * `$_SERVER['QUERY_STRING']` containing the query part of the URI -- everything from the "?" _after rewrite rule transformation_ (e. g. "api=articles/4")
 
 It also relies on a field of the global var `$REX` of Redaxo:
 
-* `$REX['SERVER']` containing the complete domain and path of the project including a trailing slash ("/"), e. g. "yourdomain.tld/"
+* `$REX['SERVER']` containing the complete domain and path of the project without leading protocol.
 
 ## Installation
 
