@@ -29,6 +29,7 @@ class kwd_jsonapi {
 	function apiLink($queryString) {
 		global $_SERVER,$REX;
 		// !! we assume server has trailing '/'
+		// ??? check for trailing '/'
 		return $_SERVER['REQUEST_SCHEME'] .'://'.$REX['SERVER'] .'api/'.$queryString;
 	}
 
@@ -57,7 +58,7 @@ class kwd_jsonapi {
 				header('Access-Control-Allow-Origin: *');
 
 				// used to make api links clickable
-				$host = $_SERVER['REQUEST_SCHEME'] .'://'.$REX['SERVER']; // TODO: check id SERVER var correct in all cases!
+				$host = $_SERVER['REQUEST_SCHEME'] .'://'.$REX['SERVER']; // ???: check id SERVER var correct in all cases!
 
 				// asociate array which is written out as JSON object
 				$request = explode('/',str_replace(self::APIMARKER,'',$api));
@@ -256,6 +257,9 @@ class kwd_jsonapi {
 				echo json_encode($response);
 				exit();
 			}
+			
+			// ! we don't exit if response could not been build
+			// ! usually this allows to show normal start page of Redaxo project. 
 		}
 		else {
 			// do nothing
