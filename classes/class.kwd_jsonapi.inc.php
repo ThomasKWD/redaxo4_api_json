@@ -38,6 +38,7 @@ class kwd_jsonapi {
 
 	//  --- API DATA GENERATION
 
+	/// ??? separate generate... and send... and provide extension point to get through
 	public function sendResponse() {
 
 		$api = $this->api;
