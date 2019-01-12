@@ -56,10 +56,13 @@ class kwd_jsonapi {
 	public function sendResponse() {
 
 		$api = $this->api;
-		if ($api && strstr($api,self::APIMARKER)) {
+		// the substr AND strlen construct is assumed to be more efficient than reg exp
+		// - just avoid reg exp when possible
+		// if ($api && preg_match('/^'.self::APIMARKER.'/Ui',$api)) {
+		if ($api && substr($api,0,strlen(self::APIMARKER)) === self::APIMARKER) {
 
 			// START
-			// ob_end_clean(); // remove caching and thus prevent changes by extension_point "OUTPUT_BUFFER"
+			// ob_end_clean(); // - not needed: remove caching and thus prevent changes by extension_point "OUTPUT_BUFFER"
 
 			// immediately stop on PUT/DELETE/POST commands
 			if (strtolower($_SERVER[self::SERVER_REQUEST_METHOD]) != 'get')  {
