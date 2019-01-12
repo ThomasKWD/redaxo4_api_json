@@ -10,7 +10,7 @@
 
 * PHP 5.4
 * Redaxo 4.x (Only tested with Redaxo 4.6.1 and 4.7.2!)
-* Mod Rewrite access.
+* Mod Rewrite access (optional).
 * Correctly set parameters.
 
 ### Configuration
@@ -29,7 +29,7 @@ It also relies on a field of the global var `$REX` of Redaxo:
 
 1. *Copy* all files into  a sub directory "*api_json*" under redaxo/include/addons/ of your Redaxo 4.x installation. Then start "Install" on the "Addons" page in the backend.
 
-2. Add a *rewrite rule* to your .htaccess or apache config. Just convert all links starting with 'api/' to a param like this: `RewriteRule ^api[/]?(.*)$ index.php?api=$1`. You can test the api without a rewrite rule. Type e.g. "http://mydomain.tld/index.php?api=articles/4".
+2. Add a *rewrite rule* to your .htaccess or apache config. Just convert all links starting with 'api/' to a param like this: `RewriteRule ^api[/]?(.*)$ index.php?api=$1`. This is recommanded to provide an easy syntax.
 
 ## Usage
 
@@ -45,6 +45,7 @@ Try your Redaxo project URI with `/api`. It provides an entry point and suggesti
 Examples:
 
 * `yourdomain.tld/api`
-* `yourdomain.tld/api/articles/1` ("1" must be the id of an existing article with status "online"
-* `yourdomain.tld/api/articles/4/content` ("4" must be the id of an existing article with status "online"
+* `yourdomain.tld/api/articles/1` ("1" must be the id of an existing article with status "online")
+* `yourdomain.tld/api/articles/4/content` ("4" must be the id of an existing article with status "online")
 
+You can use the api without a rewrite rule. Type e.g. "yourdomain.tld/index.php?api=articles/4".
