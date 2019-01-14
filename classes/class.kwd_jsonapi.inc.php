@@ -5,7 +5,7 @@ class kwd_jsonapi {
 	const APIMARKER = 'api=';
 	const SERVER_QUERY_STRING = 'QUERY_STRING';
 	const SERVER_REQUEST_SCHEME = 'REQUEST_SCHEME';
-	const SERVER_REQUEST_METHOD = 'REQUEST_METHOD';
+	// const SERVER_REQUEST_METHOD = 'REQUEST_METHOD';
 
 	private $api = '';
 	private $baseUrl = '';
@@ -13,7 +13,7 @@ class kwd_jsonapi {
 	// ??? how works with unset $serverQueryString
 	function __construct($serverQueryString = '') {
 		global $REX;
-		$this->baseUrl = $_SERVER[self::SERVER_REQUEST_SCHEME] .'://'.$REX['SERVER'];
+		$this->baseUrl = rex_server(self::SERVER_REQUEST_SCHEME,'string','http') .'://'.$REX['SERVER'];
 
 		// check for trailing '/'
 		// - for the case we have *1 or more* trailing slashes
@@ -22,7 +22,7 @@ class kwd_jsonapi {
 		}
 		$this->baseUrl  .= '/api/';
 
-		$this->api = $_SERVER[$serverQueryString ? $serverQueryString  : self::SERVER_QUERY_STRING];
+		$this->api = rex_server($serverQueryString ? $serverQueryString  : self::SERVER_QUERY_STRING);
 	}
 
 	function getSubLink($id,$name = '') {
@@ -53,19 +53,22 @@ class kwd_jsonapi {
 	//  --- API DATA GENERATION
 
 	/// ??? separate generate... and send... and provide extension point to get through
-	public function sendResponse() {
+	public function getResponse() {
 
 		$api = $this->api;
+		$response = array();
 		// the substr AND strlen construct is assumed to be more efficient than reg exp
 		// - just avoid reg exp when possible
-		// if ($api && preg_match('/^'.self::APIMARKER.'/Ui',$api)) {
-		if ($api && substr($api,0,strlen(self::APIMARKER)) === self::APIMARKER) {
+		// if ($api && preg_match('/^api=/Ui',$api)) {
+		if (substr($api,0,strlen(self::APIMARKER)) === self::APIMARKER) {
 
 			// START
 			// ob_end_clean(); // - not needed: remove caching and thus prevent changes by extension_point "OUTPUT_BUFFER"
+			// can be a problem/limitation because output buffer operations ar not done
 
 			// immediately stop on PUT/DELETE/POST commands
-			if (strtolower($_SERVER[self::SERVER_REQUEST_METHOD]) != 'get')  {
+			// if (strtolower($_SERVER[self::SERVER_REQUEST_METHOD]) != 'get')  {
+			if (rex_request_method() !== 'get') {
 				header('HTTP/1.0 403 Forbidden');
 				$response['error']['message'] = 'You can only GET data.';
 			}
@@ -78,7 +81,6 @@ class kwd_jsonapi {
 				// asociate array which is written out as JSON object
 				$request = explode('/',str_replace(self::APIMARKER,'',$api));
 
-				$response = array();
 				$response['request'] = str_replace(self::APIMARKER,'api/',$api);
 				$response['debug']['query'] = $api;
 				$response['debug']['host'] = $host;
@@ -107,18 +109,14 @@ class kwd_jsonapi {
 				}
 				else if ($request[0] == 'articles') {
 					if (!isset($request[1]) || $request[1] == '') {
-						// WARNING!: same copy/pasted code from below -- if nothing behind /api/
 
-						// $kids = OOCategory::getRootCategories(true);
-						// if (count($kids)) {
-						// 	foreach($kids as $k) {
-						// 		// TODO: read start article and check if has 'special' as art_type_id, then exclude
-						// 		// ! actually $response['categories'] is more explaining but list is the convention
-						// 		$response['sub_articles'][] = $this->getSubLink($k->getId(),$k->getName());
-						// 	}
-						// }
+						// tests to get ALL articles
+						// $articles = OOArticle::getAll();//???
+						// !!! make a nested loop for all because there should not be an article outside the structure
+						// getAllSubArticles(rootCategories)
+
 						header('HTTP/1.1 404 Resource not found');
-						$response['error']['message'] = 'Listing all articles is not supported. You can specify an id or use the entry point "/api".';
+						$response['error']['message'] = 'Listing all articles is not *yet* supported. You can specify an id or use the entry point "/api".';
 						$response['error']['links'][] = $this->apiLink('');
 						$response['error']['links'][] = $this->apiLink('help');
 					}
@@ -258,7 +256,6 @@ class kwd_jsonapi {
 					$response['error']['message'] = 'Syntax error or unknown request component';
 					$response['error']['help']['info'] = 'See links for entry point or help.';
 					$response['error']['help']['links'][] = $this->apiLink('');
-					$response['error']['help']['links'][] = $this->apiLink('articles');
 					$response['error']['help']['links'][] = $this->apiLink('help');
 				}
 			}
@@ -266,12 +263,7 @@ class kwd_jsonapi {
 			// ! comment line if you need debug
 			// DEBUG:
 			unset($response['debug']);
-
 			header('Content-Type: application/json; charset=UTF-8',false);
-			if (count($response)) {
-				echo json_encode($response);
-				exit();
-			}
 
 			// ! we don't exit if response could not been build
 			// ! usually this allows to show normal start page of Redaxo project.
@@ -279,6 +271,20 @@ class kwd_jsonapi {
 		else {
 			// do nothing
 			// maybe log attempt
+			$response = array();
 		}
+
+		if (count($response)) return json_encode($response);
+		return '';
+	}
+
+	public function send($responseString) {
+		if ($responseString) {
+			ob_end_clean();
+			echo $responseString;
+			return true;
+		}
+
+		return false;
 	}
 }

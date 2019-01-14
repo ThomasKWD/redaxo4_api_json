@@ -37,7 +37,7 @@ damit er im Backend auf das AddOn im Backend zugreifen kann.
 /*
 Hier kann man Informationen zur Version und zum Autor hinterlegen.
 */
-$REX['ADDON']['version'][$mypage] = "0.1";
+$REX['ADDON']['version'][$mypage] = "0.1.1";
 $REX['ADDON']['author'][$mypage] = "Thomas Kühne";
 
 
@@ -53,12 +53,26 @@ Dieser Schlüssel muss natürlich eindeutig sein.
 */
 // $I18N_adressen = new i18n($REX['LANG'], $REX['INCLUDE_PATH'].'/addons/'.$mypage.'/lang/');
 
-function kwd_startJsonApi() {
-	global $REX;
-	if (!$REX['REDAXO']) { // ??? could also be done by 'class_exists('kwd_jsonapi')'
-		$kwdApi = new kwd_jsonapi(); // ??? add parameter from config as server string *index*
-		$kwdApi->sendResponse();
-	}
+// - uses OUTPUT_FILTER because user will expect this (esp. for project wide replacemets)
+function kwd_startJsonApi_output($params) {
+	$response = '';
+	$kwdApi = new kwd_jsonapi(); // ??? add parameter from config as server string *index*
+	$response = $kwdApi->getResponse();
+	// ???:
+	// - make getResponse
+	// - send (with exit)
+	// - distinguish between OUTPUT_FILTER
+	if ($response) return $response;
+	return $params['subject'];
+}
+
+// - could be switched "on" by configuration
+function kwd_startJsonApi_fast() {
+	$kwdApi = new kwd_jsonapi(); // ??? add parameter from config as server string *index*
+
+	// returns false, if repsonse empty, true when something in it
+	if ($kwdApi->send($kwdApi->getResponse())) // ! send contains ob_end and echo
+		exit();
 }
 
 /*
@@ -71,9 +85,11 @@ if ($REX['REDAXO']) {
 	// Gilt nur für das Frontend
 	// bitte require ... auskommentieren.
 	require $REX['INCLUDE_PATH'].'/addons/'.$mypage.'/classes/class.kwd_jsonapi.inc.php';
-}
 
-// all other must be included because we request article contents
-// which will need e.g. a class from the "extensions" addon
-rex_register_extension('ADDONS_INCLUDED', 'kwd_startJsonApi');
+	if (!$REX['REDAXO']) rex_register_extension('OUTPUT_FILTER', 'kwd_startJsonApi_output');
+
+	// faster but can not use OUTPUT_FILTER:
+	// - all other must be included because we request article contents which will need e.g. a class from the "extensions" addon
+	// rex_register_extension('ADDONS_INCLUDED', 'kwd_startJsonApi_fast');
+}
 ?>
