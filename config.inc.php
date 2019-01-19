@@ -56,7 +56,7 @@ Dieser Schlüssel muss natürlich eindeutig sein.
 // - uses OUTPUT_FILTER because user will expect this (esp. for project wide replacemets)
 function kwd_startJsonApi_output($params) {
 	$response = '';
-	$kwdApi = new kwd_jsonapi(); // ??? add parameter from config as server string *index*
+	$kwdApi = new kwd_jsonapi_rex4(); // ??? add parameter from config as server string *index*
 	$response = $kwdApi->getResponse();
 	// ???:
 	// - make getResponse
@@ -68,7 +68,7 @@ function kwd_startJsonApi_output($params) {
 
 // - could be switched "on" by configuration
 function kwd_startJsonApi_fast() {
-	$kwdApi = new kwd_jsonapi(); // ??? add parameter from config as server string *index*
+	$kwdApi = new kwd_jsonapi_rex4(); // ??? add parameter from config as server string *index*
 
 	// returns false, if repsonse empty, true when something in it
 	if ($kwdApi->send($kwdApi->getResponse())) // ! send contains ob_end and echo
@@ -84,7 +84,8 @@ if ($REX['REDAXO']) {
 } else {
 	// Gilt nur für das Frontend
 	// bitte require ... auskommentieren.
-	require $REX['INCLUDE_PATH'].'/addons/'.$mypage.'/classes/class.kwd_jsonapi.inc.php';
+	require $REX['INCLUDE_PATH'].'/addons/'.$mypage.'/classes/kwd_jsonapi.php';
+	require $REX['INCLUDE_PATH'].'/addons/'.$mypage.'/classes/kwd_jsonapi_rex4.php';
 
 	if (!$REX['REDAXO']) rex_register_extension('OUTPUT_FILTER', 'kwd_startJsonApi_output');
 

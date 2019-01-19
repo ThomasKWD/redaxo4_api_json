@@ -30,7 +30,7 @@ It also relies on a field of the global var `$REX` of Redaxo:
 
 1. *Copy* all files into  a sub directory "*api_json*" under redaxo/include/addons/ of your Redaxo 4.x installation. Then start "Install" on the "Addons" page in the backend.
 
-2. Add a *rewrite rule* to your .htaccess or apache config. Just convert all links starting with 'api/' to a param like this: `RewriteRule ^api[/]?(.*)$ index.php?api=$1`. This is recommanded to provide an easy syntax.
+2. Add a *rewrite rule* to your ".htaccess" file or apache config. Just convert all links starting with 'api/' to a param e. g.: `RewriteRule ^api[/]?(.*)$ index.php?api=$1`. This is recommanded to provide an easy syntax.
 
 ## Usage
 
@@ -39,7 +39,7 @@ But you can easily get titles or full body contents of several sub-articles at o
 
 Only articles and categories with status "online" are included.
 
-You also can request rendered article content by appending `/content`. This explicit keyword is for  minimizing respond data load because often just a list of article links is needed.
+You also can request rendered article content by appending `/content`. This explicit keyword is for  minimizing respond data load because often just a list of article titles or links are needed.
 
 Try your Redaxo project URI with `/api`. It provides an entry point and suggestions. More usage examples and explanations can be found in the response itself.
 

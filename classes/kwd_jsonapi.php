@@ -1,28 +1,80 @@
 <?php
 
-class kwd_jsonapi {
+abstract class kwd_jsonapi {
 
-	const APIMARKER = 'api=';
-	const SERVER_QUERY_STRING = 'QUERY_STRING';
-	const SERVER_REQUEST_SCHEME = 'REQUEST_SCHEME';
+	protected const APIMARKER = 'api=';
+	protected const API_REQUEST_START = '/api/'; // to generate correct links to api resources in response
+	protected const SERVER_QUERY_STRING = 'QUERY_STRING';
+	protected const SERVER_REQUEST_SCHEME = 'REQUEST_SCHEME';
 	// const SERVER_REQUEST_METHOD = 'REQUEST_METHOD';
 
-	private $api = '';
-	private $baseUrl = '';
+	protected $requestMethod = '';
+	protected $baseUrl = '';
+	protected $api = '';
 
-	// ??? how works with unset $serverQueryString
-	function __construct($serverQueryString = '') {
-		global $REX;
-		$this->baseUrl = rex_server(self::SERVER_REQUEST_SCHEME,'string','http') .'://'.$REX['SERVER'];
+	/** Inits instance var $baseUrl
+	* sub classes should call super->init()
+	*/
+	public function initBaseUrl($requestScheme,$serverPath) {
+
+		// rex_server is assumed existent in redaxo 4 and 5
+		// TODO: but you should extract it, it could be change in redaxo 6
+		$baseUrl = $requestScheme .'://'.$serverPath;
 
 		// check for trailing '/'
 		// - for the case we have *1 or more* trailing slashes
-		while (substr($this->baseUrl,-1) == '/') {
-			$this->baseUrl = substr($this->baseUrl,0,strlen($this->baseUrl) - 1);
+		// ! endless loop if substr not working correctly
+		while (substr($baseUrl,-1) == '/') {
+			$baseUrl = substr($baseUrl,0,strlen($baseUrl) - 1);
 		}
-		$this->baseUrl  .= '/api/';
+		$baseUrl  .= self::API_REQUEST_START;
 
-		$this->api = rex_server($serverQueryString ? $serverQueryString  : self::SERVER_QUERY_STRING);
+		return $baseUrl;
+	}
+
+	/** check valid requestMethod
+	* - current code seems useless but considered prepared for more methods allowed later
+	*/
+	public function initRequestMethod($requestMethod) {
+
+		$requestMethod = strtolower($requestMethod);
+
+		// add more allowed methos here, maybe use reg exp
+		if ($requestMethod !== 'get') $requestMethod = 'get';
+
+		return $requestMethod;
+	}
+
+	protected function init ($requestMethod = 'get', $requestScheme = 'http', $queryString = '', $serverPath) {
+		$this->requestMethod = $this->initRequestMethod($requestMethod);
+		$this->baseUrl = $this->initBaseUrl($requestScheme,$serverPath);
+		$this->api = $queryString;
+	}
+
+	public function getConfiguration() {
+		return array(
+			'requestMethod' => $this->requestMethod,
+			'baseUrl' => $this->baseUrl,
+			'apiString' => $this->api
+		);
+	}
+
+	/** constructs instance.
+	*/
+	function __construct($serverQueryString = '') {
+		//sub class must do:
+		// global $REX;
+		// $this->baseUrl = $this->initBaseUrl(rex_server(self::SERVER_REQUEST_SCHEME,'string','http'),$REX['SERVER']);
+		// super.__construct();
+
+		// $this->api = rex_server($serverQueryString ? $serverQueryString  : self::SERVER_QUERY_STRING);
+	}
+
+	/**
+	*
+	*/
+	function setApiQueryString($queryString) {
+
 	}
 
 	function getSubLink($id,$name = '') {
@@ -68,7 +120,7 @@ class kwd_jsonapi {
 
 			// immediately stop on PUT/DELETE/POST commands
 			// if (strtolower($_SERVER[self::SERVER_REQUEST_METHOD]) != 'get')  {
-			if (rex_request_method() !== 'get') {
+			if ($this->requestMethod !== 'get') {
 				header('HTTP/1.0 403 Forbidden');
 				$response['error']['message'] = 'You can only GET data.';
 			}
