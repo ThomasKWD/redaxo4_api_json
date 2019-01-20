@@ -5,6 +5,19 @@ require_once('../classes/kwd_jsonapi.php');
 
 // need an extra derived class
 class kwd_jsonapi_test extends kwd_jsonapi {
+
+	public function getRootCategories($ignore_offlines = false, $clang = 0) {
+		return null;
+	}
+
+	public function getCategoryById($id, $clang = 0) {
+		return null;
+	}
+
+	public function getArticleById($id, $clang = 0) {
+		return null;
+	}
+
 	function __construct() {
 		$this->init(
 			'GET',
@@ -64,12 +77,6 @@ class KwdJsonApiTestCase extends TestCase {
 		$this->assertEquals($ret,'','empty string is ok here');
 	}
 
-	public function testApiRootResponse() {
-		$this->jsonApiObject->init('GET','http','api=','localhost');
-		// $ret = $this->jsonApiObject->buildResponse(); // better name
-		$this->markTestIncomplete();
-	}
-
 	public function testCollectingHeadersSeparately() {
 		$accesControlOrigin = 'Access-Control-Allow-Origin: *';
 		// ??? add additional init because otherwise the array already filled
@@ -77,9 +84,27 @@ class KwdJsonApiTestCase extends TestCase {
 		$headers = $this->jsonApiObject->addHeader('HTTP/1.0 403 Forbidden');
 		$headers = $this->jsonApiObject->addHeader($accesControlOrigin);
 		$headers = $this->jsonApiObject->addHeader('Content-Type: application/json; charset=UTF-8');
-		$this->assertEquals(count($this->jsonApiObject->getHeaders()),3,'should insert 3 entries');
+		$this->assertCount(3,$this->jsonApiObject->getHeaders(),'should insert 3 entries');
 		$this->assertEquals($this->jsonApiObject->getHeaders()[0],'HTTP/1.0 403 Forbidden','sample check index 0');
 		$this->assertEquals($this->jsonApiObject->getHeaders()[1],$accesControlOrigin,'sample check index 1');
+	}
+
+
+	public function testIgnoreApiOnBuildResponse() {
+		$this->jsonApiObject->init('GET','http','article_id=23','localhost');
+		$ret = $this->jsonApiObject->buildResponse(); // better name
+		$this->assertTrue(is_string($ret));
+		$this->assertSame($ret,'','no API request must lead to empty string');
+	}
+
+	public function testApiRootResponse() {
+		$this->jsonApiObject->init('GET','http','api=','localhost');
+		$ret = $this->jsonApiObject->buildResponse(); // better name
+		$this->assertTrue(is_string($ret));
+		// how assert error/no error ???
+		$retJSON = json_decode($ret); // makes object!
+		// $this->assertJsonStringEqualsJsonString($ret,'API request must lead to sensible json string');
+		$this->assertSame($retJSON->request,'api/','checking json entry');
 	}
 
 	public function testSendResponse() {

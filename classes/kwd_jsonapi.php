@@ -14,6 +14,21 @@ abstract class kwd_jsonapi {
 
 	protected $headers = array(); // indexed array
 
+	abstract public function getRootCategories($ignore_offlines = false,$clang = 0);
+	abstract public function getCategoryById($id, $clang = 0);
+	abstract public function getArticleById($id,$clang = 0);
+
+	/** constructs instance.
+	*/
+	function __construct($serverQueryString = '') {
+		//sub class must do:
+		// global $REX;
+		// $this->baseUrl = $this->initBaseUrl(rex_server(self::SERVER_REQUEST_SCHEME,'string','http'),$REX['SERVER']);
+		// super.__construct();
+
+		// $this->api = rex_server($serverQueryString ? $serverQueryString  : self::SERVER_QUERY_STRING);
+	}
+
 	/** adds header to list
 	*	- will be written as http header (see function send())
 	*	! always replace (does not support replace=false for header(),
@@ -86,17 +101,6 @@ abstract class kwd_jsonapi {
 			'baseUrl' => $this->baseUrl,
 			'apiString' => $this->api
 		);
-	}
-
-	/** constructs instance.
-	*/
-	function __construct($serverQueryString = '') {
-		//sub class must do:
-		// global $REX;
-		// $this->baseUrl = $this->initBaseUrl(rex_server(self::SERVER_REQUEST_SCHEME,'string','http'),$REX['SERVER']);
-		// super.__construct();
-
-		// $this->api = rex_server($serverQueryString ? $serverQueryString  : self::SERVER_QUERY_STRING);
 	}
 
 	public function getHeaders() {
@@ -223,7 +227,7 @@ abstract class kwd_jsonapi {
 							}
 							else $clang_id = 0;
 
-							$article = OOArticle::getArticleById($article_id,$clang_id);
+							$article = $this->getArticleById($article_id,$clang_id);
 
 							if ($article) {
 								// TODO: check for null!!!, clang_id can be wrong or invalid!, $article_id can be wrong
@@ -241,7 +245,8 @@ abstract class kwd_jsonapi {
 								$response['sub_articles'] = array();
 								// get my category
 								// - if there are sub categories assume one child for each sub cat
-								$cat = OOCategory::getCategoryById($article->getValue('category_id'));
+								// ??? why not pass $clang_id
+								$cat = $this->getCategoryById($article->getValue('category_id'));
 								$kids = $cat->getChildren(true); // true means only "onlines"
 								if (count($kids)) {
 									$i=0;
@@ -322,7 +327,7 @@ abstract class kwd_jsonapi {
 					$response['info'] = 'You can use the ids or links in the "list" of root categories.';
 					$response['help']['info'] = 'Check out the help section!';
 					$response['help']['links'][] = $this->apiLink('help');
-					$kids = OOCategory::getRootCategories(true);
+					$kids = $this->getRootCategories(true);
 					if (count($kids)) {
 						foreach($kids as $k) {
 							$response['root_articles'][] = $this->getSubLink($k->getId(),$k->getName());
@@ -351,7 +356,6 @@ abstract class kwd_jsonapi {
 		else {
 			// do nothing
 			// ??? maybe log attempt
-			$response = array();
 		}
 
 		// ??? include headers in return value?
