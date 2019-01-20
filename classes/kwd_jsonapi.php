@@ -12,10 +12,23 @@ abstract class kwd_jsonapi {
 	protected $baseUrl = '';
 	protected $api = '';
 
+	protected $headers = array(); // indexed array
+
+	/** adds header to list
+	*	- will be written as http header (see function send())
+	*	! always replace (does not support replace=false for header(),
+	*		??? just pass and save flag if needed)
+	*	@param string $headerString must contain valid HTTP header directive
+	*/
+	public function addHeader($headerString) {
+		array_push($this->headers,$headerString);
+	}
+
 	/** Inits instance var $baseUrl
 	* sub classes should call super->init()
+	* - helper function, does NOT modify state of object
 	*/
-	public function initBaseUrl($requestScheme,$serverPath) {
+	public function buildBaseUrl($requestScheme,$serverPath) {
 
 		// rex_server is assumed existent in redaxo 4 and 5
 		// TODO: but you should extract it, it could be change in redaxo 6
@@ -34,8 +47,9 @@ abstract class kwd_jsonapi {
 
 	/** check valid requestMethod
 	* - current code seems useless but considered prepared for more methods allowed later
+	* - helper function, does NOT modify state of object
 	*/
-	public function initRequestMethod($requestMethod) {
+	public function buildRequestMethod($requestMethod) {
 
 		$requestMethod = strtolower($requestMethod);
 
@@ -45,12 +59,27 @@ abstract class kwd_jsonapi {
 		return $requestMethod;
 	}
 
-	protected function init ($requestMethod = 'get', $requestScheme = 'http', $queryString = '', $serverPath) {
-		$this->requestMethod = $this->initRequestMethod($requestMethod);
-		$this->baseUrl = $this->initBaseUrl($requestScheme,$serverPath);
+	/** reset query string
+	*	- simple setter to eeasily change config after init
+	*	! modifies object property
+	*   @return string newly set string
+	*/
+	public function setApiQueryString($queryString) {
 		$this->api = $queryString;
+
+		return $this->api;
 	}
 
+	public function init ($requestMethod = 'get', $requestScheme = 'http', $queryString = '', $serverPath) {
+		$this->requestMethod = $this->buildRequestMethod($requestMethod);
+		$this->baseUrl = $this->buildBaseUrl($requestScheme,$serverPath);
+		$this->setApiQueryString($queryString);
+	}
+
+	/** reads current configuration.
+	*	Returns all relevant object properties as associated array
+	* - getter; does NOT modify state of object
+	*/
 	public function getConfiguration() {
 		return array(
 			'requestMethod' => $this->requestMethod,
@@ -70,21 +99,19 @@ abstract class kwd_jsonapi {
 		// $this->api = rex_server($serverQueryString ? $serverQueryString  : self::SERVER_QUERY_STRING);
 	}
 
-	/**
-	*
-	*/
-	function setApiQueryString($queryString) {
-
+	public function getHeaders() {
+		// ! PHP always returns copy of array
+		return $this->headers;
 	}
 
-	function getSubLink($id,$name = '') {
+	protected function getSubLink($id,$name = '') {
 		$entry['id'] = $id;
 		if ($name) $entry['title'] = $name;
 		$entry['link'] = $this->articleLink($id);
 		return $entry;
 	}
 
-	function addContent(&$responseObject,$demandContent,$article_id,$clang_id) {
+	protected function addContent(&$responseObject,$demandContent,$article_id,$clang_id) {
 		if ($demandContent) {
 			$articleContent = new article();
 			$articleContent->setClang($clang_id); // lt. Kommentar, openmind, 01-feb-2007
@@ -94,18 +121,18 @@ abstract class kwd_jsonapi {
 	}
 
 	/// ??? make var for server name
-	function apiLink($queryString) {
+	protected function apiLink($queryString) {
 		return $this->baseUrl .$queryString;
 	}
 
-	function articleLink($article_id,$clang_id = 0,$showContent = false) {
+	protected function articleLink($article_id,$clang_id = 0,$showContent = false) {
 		return $this->apiLink('articles/'.$article_id.'/'.($clang_id ? $clang_id + 1 : 1).($showContent ? '/content' : ''));
 	}
 
 	//  --- API DATA GENERATION
 
-	/// ??? separate generate... and send... and provide extension point to get through
-	public function getResponse() {
+	/// ??? don't send headers but collect them
+	public function buildResponse() {
 
 		$api = $this->api;
 		$response = array();
@@ -121,11 +148,11 @@ abstract class kwd_jsonapi {
 			// immediately stop on PUT/DELETE/POST commands
 			// if (strtolower($_SERVER[self::SERVER_REQUEST_METHOD]) != 'get')  {
 			if ($this->requestMethod !== 'get') {
-				header('HTTP/1.0 403 Forbidden');
+				$this->addHeader('HTTP/1.1 403 Forbidden');
 				$response['error']['message'] = 'You can only GET data.';
 			}
 			else {
-				header('Access-Control-Allow-Origin: *');
+				$this->addHeader('Access-Control-Allow-Origin: *');
 
 				// used to make api links clickable
 				$host = $this->baseUrl; // ???: check id SERVER var correct in all cases!
@@ -134,6 +161,7 @@ abstract class kwd_jsonapi {
 				$request = explode('/',str_replace(self::APIMARKER,'',$api));
 
 				$response['request'] = str_replace(self::APIMARKER,'api/',$api);
+				$response['debug']['queryString'] = $api;
 				$response['debug']['query'] = $api;
 				$response['debug']['host'] = $host;
 
@@ -167,7 +195,7 @@ abstract class kwd_jsonapi {
 						// !!! make a nested loop for all because there should not be an article outside the structure
 						// getAllSubArticles(rootCategories)
 
-						header('HTTP/1.1 404 Resource not found');
+						$this->addHeader('HTTP/1.1 404 Resource not found');
 						$response['error']['message'] = 'Listing all articles is not *yet* supported. You can specify an id or use the entry point "/api".';
 						$response['error']['links'][] = $this->apiLink('');
 						$response['error']['links'][] = $this->apiLink('help');
@@ -183,7 +211,7 @@ abstract class kwd_jsonapi {
 								else if ($request[2]) {
 									// error because omitted language or large number already checked
 									// TODO: how to unset id, title etc.
-									// header('HTTP/1.1 400 Syntax Error');
+									// $this->addHeader('HTTP/1.1 400 Syntax Error');
 									$response['warning']['message'] = 'Invalid argument for language. You may provide number and/or "content". See "examples". Note that your request is still processed';
 									$response['warning']['examples']['links'] = array(
 										$this->apiLink('articles/'.$article_id),
@@ -268,7 +296,7 @@ abstract class kwd_jsonapi {
 								}
 							}
 							else {
-								header("HTTP/1.1 404 Not Found");
+								$this->addHeader("HTTP/1.1 404 Not Found");
 								// no $article
 								// - $article_id and $clang_id already checked whether invalid
 								// - so we assume non existing article
@@ -281,7 +309,7 @@ abstract class kwd_jsonapi {
 						}
 						else {
 							// TODO: make sub function!
-							header("HTTP/1.1 400 Bad Request");
+							$this->addHeader("HTTP/1.1 400 Bad Request");
 							$response['error']['message'] = 'Invalid parameter for "articles".';
 							$response['error']['help']['info'] = 'Start with /api/ or see "links" for other examples';
 							$response['error']['help']['links'][] = $this->apiLink('');
@@ -304,7 +332,7 @@ abstract class kwd_jsonapi {
 				}
 				else {
 					// word articles not found
-					header('HTTP/1.1 400 Bad Request');
+					$this->addHeader('HTTP/1.1 400 Bad Request');
 					$response['error']['message'] = 'Syntax error or unknown request component';
 					$response['error']['help']['info'] = 'See links for entry point or help.';
 					$response['error']['help']['links'][] = $this->apiLink('');
@@ -315,24 +343,34 @@ abstract class kwd_jsonapi {
 			// ! comment line if you need debug
 			// DEBUG:
 			unset($response['debug']);
-			header('Content-Type: application/json; charset=UTF-8',false);
+			$this->addHeader('Content-Type: application/json; charset=UTF-8',false);
 
 			// ! we don't exit if response could not been build
 			// ! usually this allows to show normal start page of Redaxo project.
 		}
 		else {
 			// do nothing
-			// maybe log attempt
+			// ??? maybe log attempt
 			$response = array();
 		}
 
+		// ??? include headers in return value?
 		if (count($response)) return json_encode($response);
 		return '';
 	}
 
+	public function sendHeaders() {
+		foreach($this->getHeaders() as $h) {
+			// ! only supports replace = true
+			header($h);
+		}
+	}
+
 	public function send($responseString) {
 		if ($responseString) {
+			// send headers!!
 			ob_end_clean();
+			$this->sendHeaders();
 			echo $responseString;
 			return true;
 		}

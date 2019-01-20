@@ -57,12 +57,11 @@ Dieser Schlüssel muss natürlich eindeutig sein.
 function kwd_startJsonApi_output($params) {
 	$response = '';
 	$kwdApi = new kwd_jsonapi_rex4(); // ??? add parameter from config as server string *index*
-	$response = $kwdApi->getResponse();
-	// ???:
-	// - make getResponse
-	// - send (with exit)
-	// - distinguish between OUTPUT_FILTER
-	if ($response) return $response;
+	$response = $kwdApi->buildResponse(); // returns immediately when no valid API request found
+	if ($response) {
+		$kwdApi->sendHeaders(); // ! this means you can alter/prevent response body; but not the HTTP headers
+		return $response;
+	}
 	return $params['subject'];
 }
 
@@ -71,7 +70,7 @@ function kwd_startJsonApi_fast() {
 	$kwdApi = new kwd_jsonapi_rex4(); // ??? add parameter from config as server string *index*
 
 	// returns false, if repsonse empty, true when something in it
-	if ($kwdApi->send($kwdApi->getResponse())) // ! send contains ob_end and echo
+	if ($kwdApi->send($kwdApi->buildResponse())) // ! send contains ob_end and echo
 		exit();
 }
 
@@ -88,6 +87,7 @@ if ($REX['REDAXO']) {
 	require $REX['INCLUDE_PATH'].'/addons/'.$mypage.'/classes/kwd_jsonapi_rex4.php';
 
 	if (!$REX['REDAXO']) rex_register_extension('OUTPUT_FILTER', 'kwd_startJsonApi_output');
+	// if (!$REX['REDAXO']) rex_register_extension('OUTPUT_FILTER', 'kwd_startJsonApi_fast');
 
 	// faster but can not use OUTPUT_FILTER:
 	// - all other must be included because we request article contents which will need e.g. a class from the "extensions" addon

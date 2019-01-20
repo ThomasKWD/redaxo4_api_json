@@ -4,7 +4,6 @@
 *	JSON api logic see base class.
 */
 class kwd_jsonapi_rex4 extends kwd_jsonapi {
-
 	// ??? how works with unset $serverQueryString
 	function __construct($serverQueryString = '') {
 		global $REX;
