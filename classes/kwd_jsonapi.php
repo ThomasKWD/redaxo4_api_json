@@ -110,9 +110,22 @@ abstract class kwd_jsonapi {
 		$entry['id'] = $id;
 		if ($name) $entry['title'] = $name;
 		$entry['link'] = $this->articleLink($id);
+		// return array
 		return $entry;
 	}
 
+	// get data from OOarticle object
+	protected function addArticle($art,$isStartarticle,$demandContent = false, $demandMetaInfo = false) {
+		$res = array();
+		// order matters:
+		$res['id'] = $art->getId();
+		$res['name'] = $art->getName();
+		$res['is_start_article'] = $isStartarticle ? true : false;
+
+		return $res;
+	}
+
+	// IDEA: try to design/write it without passing response object
 	protected function addContent(&$responseObject,$demandContent,$article_id,$clang_id) {
 		if ($demandContent) {
 			$articleContent = new article();
@@ -322,15 +335,22 @@ abstract class kwd_jsonapi {
 					}
 				}
 				else if (!isset($request[0]) || $request[0] == '') {
-					$response['info'] = 'You can use the ids or links in the "list" of root categories.';
-					$response['help']['info'] = 'Check out the help section!';
+					$response['info'] = 'You can use the ids or links in the list of root "categories".';
+					$response['help']['info'] = 'Check out the help section too!';
 					$response['help']['links'][] = $this->apiLink('help');
 					$kids = $this->getRootCategories(true);
+					// we must assume clang id 0 here
+					$clang_id = 0;
 					if (count($kids)) {
 						foreach($kids as $k) {
-							$response['root_articles'][] = $this->getSubLink($k->getId(),$k->getName());
+							$catResponse = $this->getSubLink($k->getId(),$k->getName());
+							$catResponse['articles'][] = $this->addArticle($k->getStartArticle(),true,$content);
+							$response['categories'][] = $catResponse;
 						}
-						if ($content) $response['warning'] = 'Content bodies are never displayed for the root categories';
+					}
+					else {
+						// IDEA: check if better to have an empty array "categories[]" to indicate there usually are some
+						$response['warning'] = 'Currently no root "categories" online.';
 					}
 				}
 				else {

@@ -3,6 +3,27 @@ use PHPUnit\Framework\TestCase;
 
 require_once('../classes/kwd_jsonapi.php');
 
+
+class mockRexArticle {
+	private $id;
+	private $name;
+	private $isStartarticle;
+
+	function __construct($id,$catname,$isStartarticle) {
+		$this->id = $id;
+		$name = $catname .'_article';
+		$this->$isStartarticle = $isStartarticle ? true : false;
+	}
+
+	function getId() {
+		return $this->id;
+	}
+
+	function getName() {
+		return $this->name;
+	}
+}
+
 class mockRexCategory {
 
 	private $id;
@@ -20,6 +41,10 @@ class mockRexCategory {
 	public function getName() {
 		return $this->name;
 	}
+
+	public function getStartArticle() {
+		return new mockRexArticle($this->id,$this->name,true);
+	}
 }
 
 // need an extra derived class
@@ -29,9 +54,8 @@ class kwd_jsonapi_test extends kwd_jsonapi {
 		// to mock the root categories we just generate objects from a json
 		$rootCats = array();
 		$rootCats[] = new mockRexCategory(1,'Start');
-		// array_push(new mockRexCategory(21,'News'));
-		// array_push(new mockRexCategory(4,'Angebote'));
-		// array_push(new mockRexCategory(3,'Referenzen'));
+		$rootCats[] = new mockRexCategory(21,'News');
+		$rootCats[] = new mockRexCategory(3,'Referenzen');
 
 		return $rootCats;
 	}
@@ -136,27 +160,54 @@ class KwdJsonApiTestCase extends TestCase {
 	}
 
 	public function testGenerateResponseForEntryPoint() {
+		// ??? make sure no categories yet
 		$this->markTestIncomplete('// ??? IDEA: could demand "/api/categories" while /api/just gives meta infos');
 	}
 
-	public function testGenerateResponseForRootRequest() {
+	public function testGenerateResponseForRootCategoriesRequest() {
+
 		$response = $this->jsonApiObject->buildResponse();
 		$this->assertInternalType('string',$response);
 		$this->assertGreaterThan(3,strlen($response)); // should not be empty (which is for rejected request)
-		// $this->assertEquals($response,'eeee'); // should not be empty (which is for rejected request)
-		// $response = '}(&%^)'.$response.'((**)*)';
+
+		// the cool thing: expected field names in json are object and array identifiers here ;-)
 		$json = json_decode($response);
+
 		$this->assertNotEquals($json,null,'must be != null indicating correct JSON'); // should not be empty (which is for rejected request)
-		$this->assertEquals($json->help->info,'Check out the help section!','help text should be under help > info');
+		$this->assertEquals($json->help->info,'Check out the help section too!','help text should be under help > info');
 		$this->assertTrue(is_array($json->help->links),'help links section should be array');
 		$this->assertEquals($json->help->links[0],'http://localhost/tk/kwd_website/api/help','help link should contain reasonable api link path');
 
 		// print_r($json);
-		$this->assertTrue(isset($json->root_articles));
-		$this->assertTrue(is_array($json->root_articles));
-		$this->assertEquals($json->root_articles[0]->title,'Start','Name of first root category');
+
+		// check categories, then 1 in detail, then inner article of the first
+		// /api/categories
+		$this->assertTrue(isset($json->categories),'No entry "categories"');
+		$this->assertTrue(is_array($json->categories),'"categories" is not an array');
+		$this->assertEquals(3,count($json->categories),'defined 3 test root categories');
+		// first cat
+		$cat1 = $json->categories[0];
+		$this->assertEquals($cat1->name,'Start','Name of first root category'); // ! now name, not title
+		$this->assertEquals($cat1->id,1,'id of first root category');
+		$this->assertTrue(!isset($cat1->prior),'!isset: we want NOT prior defined because root categories always given by prio');
+
+		// first article of first cat
+		$this->assertTrue(is_array($cat1->articles),'field "articles" must be there and be an array');
+		$art1 = $cat1->articles[0];
+
 		// $this->assertTrue(isset($json->categories),'false means: the list of "categories" not found');
 	}
+
+	// /api/categories/3
+	// /api/categories/3/content
+	// /api/categories/3/contentandmetainfo
+
+	// pubclic function testRequestSingleArticle
+	// - actually you could send metadata+content always
+	// /api/articles/12
+	// /api/articles/12/metadata
+	// /api/articles/12/content
+	// /api/articles/12/[data|slices]
 
 	public function testSendResponse() {
 		// ??? how to test successful send
