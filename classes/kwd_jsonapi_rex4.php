@@ -5,15 +5,15 @@
 */
 class kwd_jsonapi_rex4 extends kwd_jsonapi {
 
-	public function getRootCategories($ignore_offlines = false, $clang = 0) {
+	protected function getRootCategories($ignore_offlines = false, $clang = 0) {
 		return OOCategory::getRootCategories($ignore_offlines,$clang);
 	}
 
-	public function getCategoryById($id, $clang = 0) {
+	protected function getCategoryById($id, $clang = 0) {
 		return OOCategory::getCategoryById($id, $clang);
 	}
 
-	public function getArticleById($id, $clang = 0) {
+	protected function getArticleById($id, $clang = 0) {
 		return OOArticle::getArticleById($id,$clang);
 	}
 
@@ -21,7 +21,7 @@ class kwd_jsonapi_rex4 extends kwd_jsonapi {
 	function __construct($serverQueryString = '') {
 		global $REX;
 
-		$this->init(
+		parent::__construct(
 			rex_request_method(), // must pass lower case string
 			rex_server(self::SERVER_REQUEST_SCHEME,'string','http'),
 			rex_server($serverQueryString ? $serverQueryString  : self::SERVER_QUERY_STRING),

@@ -14,19 +14,12 @@ abstract class kwd_jsonapi {
 
 	protected $headers = array(); // indexed array
 
-	abstract public function getRootCategories($ignore_offlines = false,$clang = 0);
-	abstract public function getCategoryById($id, $clang = 0);
-	abstract public function getArticleById($id,$clang = 0);
+	abstract protected function getRootCategories($ignore_offlines = false,$clang = 0);
+	abstract protected function getCategoryById($id, $clang = 0);
+	abstract protected function getArticleById($id,$clang = 0);
 
-	/** constructs instance.
-	*/
-	function __construct($serverQueryString = '') {
-		//sub class must do:
-		// global $REX;
-		// $this->baseUrl = $this->initBaseUrl(rex_server(self::SERVER_REQUEST_SCHEME,'string','http'),$REX['SERVER']);
-		// super.__construct();
-
-		// $this->api = rex_server($serverQueryString ? $serverQueryString  : self::SERVER_QUERY_STRING);
+	function __construct($requestMethod = 'get', $requestScheme = 'http', $queryString = '', $serverPath) {
+		$this->init($requestMethod, $requestScheme, $queryString, $serverPath);
 	}
 
 	/** adds header to list
@@ -43,7 +36,7 @@ abstract class kwd_jsonapi {
 	* sub classes should call super->init()
 	* - helper function, does NOT modify state of object
 	*/
-	public function buildBaseUrl($requestScheme,$serverPath) {
+	protected function buildBaseUrl($requestScheme,$serverPath) {
 
 		// rex_server is assumed existent in redaxo 4 and 5
 		// TODO: but you should extract it, it could be change in redaxo 6
@@ -64,7 +57,7 @@ abstract class kwd_jsonapi {
 	* - current code seems useless but considered prepared for more methods allowed later
 	* - helper function, does NOT modify state of object
 	*/
-	public function buildRequestMethod($requestMethod) {
+	protected function buildRequestMethod($requestMethod) {
 
 		$requestMethod = strtolower($requestMethod);
 
@@ -106,6 +99,11 @@ abstract class kwd_jsonapi {
 	public function getHeaders() {
 		// ! PHP always returns copy of array
 		return $this->headers;
+	}
+
+	public function setHeaders($headersArray) {
+		// ! PHP always assigns copy of array
+		return $this->headers = $headersArray;
 	}
 
 	protected function getSubLink($id,$name = '') {

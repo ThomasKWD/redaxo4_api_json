@@ -19,7 +19,7 @@ class kwd_jsonapi_test extends kwd_jsonapi {
 	}
 
 	function __construct() {
-		$this->init(
+		parent::__construct(
 			'GET',
 			'http',
 			'api=articles/4',
@@ -48,20 +48,23 @@ class KwdJsonApiTestCase extends TestCase {
 		$this->assertSame($conf['apiString'],'api=articles/4','queryString must have "api="...');
     }
 
-	public function testCorrectBaseUrl() {
-		// testing the sub function directly
-		$this->assertSame($this->jsonApiObject->buildBaseUrl('http','localhost/tk/kwd_website'),'http://localhost/tk/kwd_website/api/');
-		$this->assertSame($this->jsonApiObject->buildBaseUrl('http','localhost/tk/kwd_website/'),'http://localhost/tk/kwd_website/api/');
-		$this->assertSame($this->jsonApiObject->buildBaseUrl('http','localhost/tk/kwd_website//'),'http://localhost/tk/kwd_website/api/');
-		$this->assertSame($this->jsonApiObject->buildBaseUrl('http','localhost/tk/kwd_website///'),'http://localhost/tk/kwd_website/api/');
-	}
-
 	public function testReInit() {
+		// ??? check if ever needed
 		$this->jsonApiObject->init('PUT','https','api=','popelhost');
 		$conf = $this->jsonApiObject->getConfiguration();
 		$this->assertSame($conf['requestMethod'],'get','request method must be reset to "get" when invalid');
 		$this->assertSame($conf['baseUrl'],'https://popelhost/api/','baseUrl must be correct URL path including api/');
 		$this->assertSame($conf['apiString'],'api=','queryString must have "api="...');
+	}
+
+	public function testCorrectBaseUrl() {
+		$this->jsonApiObject->init('get','http','api=','localhost/tk/kwd_website');
+		$this->assertSame($this->jsonApiObject->getConfiguration()['baseUrl'],'http://localhost/tk/kwd_website/api/');
+
+		$this->jsonApiObject->init('get','http','api=','localhost2/tk/kwd_website/');
+		$this->assertSame($this->jsonApiObject->getConfiguration()['baseUrl'],'http://localhost2/tk/kwd_website/api/');
+		$this->jsonApiObject->init('get','http','api=','localhost3/tk/kwd_website//');
+		$this->assertSame($this->jsonApiObject->getConfiguration()['baseUrl'],'http://localhost3/tk/kwd_website/api/');
 	}
 
 	public function testNoApiRequest() {
@@ -88,7 +91,6 @@ class KwdJsonApiTestCase extends TestCase {
 		$this->assertEquals($this->jsonApiObject->getHeaders()[0],'HTTP/1.0 403 Forbidden','sample check index 0');
 		$this->assertEquals($this->jsonApiObject->getHeaders()[1],$accesControlOrigin,'sample check index 1');
 	}
-
 
 	public function testIgnoreApiOnBuildResponse() {
 		$this->jsonApiObject->init('GET','http','article_id=23','localhost');
