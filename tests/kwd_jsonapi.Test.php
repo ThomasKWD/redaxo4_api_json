@@ -68,83 +68,66 @@ class kwd_jsonapi_test extends kwd_jsonapi {
 		return null;
 	}
 
-	function __construct() {
+	function __construct($method = 'GET', $scheme = 'http', $serverPath = 'localhost/tk/kwd_website', $query = 'api=') {
 		parent::__construct(
-			'GET',
-			'http',
-			'api=',
-			'localhost/tk/kwd_website//'
+			$method,
+			$scheme,
+			$serverPath,
+			$query
 		);
 	}
 }
 
 class KwdJsonApiTestCase extends TestCase {
-	protected $jsonApiObject;
-
-	protected function setUp() {
-		$this->jsonApiObject = new kwd_jsonapi_test();
-	}
-
-	protected function tearDown() {
-		unset($this->jsonApiObject); // don't know if no effect
-	}
 
     public function testInitInConstructor() {
+		$jao = new kwd_jsonapi_test(); // default settings see test class declaration
 		// test the construct ... getConfiguration path
-		$conf = $this->jsonApiObject->getConfiguration();
+		$conf = $jao->getConfiguration();
 		$this->assertArrayHasKey('requestMethod',$conf); // redundant because array indices used below
 		$this->assertSame($conf['requestMethod'],'get','request method must be valid case insensitive');
 		$this->assertSame($conf['baseUrl'],'http://localhost/tk/kwd_website/api/','baseUrl must eliminate >1 trailing slashes, but add if none');
 		$this->assertSame($conf['apiString'],'api=','queryString must have "api="...');
     }
 
-	public function testReInit() {
-		// ??? check if ever needed
-		$this->jsonApiObject->init('PUT','https','api=','popelhost');
-		$conf = $this->jsonApiObject->getConfiguration();
-		$this->assertSame($conf['requestMethod'],'get','request method must be reset to "get" when invalid');
-		$this->assertSame($conf['baseUrl'],'https://popelhost/api/','baseUrl must be correct URL path including api/');
-		$this->assertSame($conf['apiString'],'api=','queryString must have "api="...');
-	}
-
 	public function testCorrectBaseUrl() {
-		$this->jsonApiObject->init('get','http','api=','localhost/tk/kwd_website');
-		$this->assertSame($this->jsonApiObject->getConfiguration()['baseUrl'],'http://localhost/tk/kwd_website/api/');
+		$jao = new kwd_jsonapi_test('get','http','localhost/tk/kwd_website','api=');
+		$this->assertSame($jao->getConfiguration()['baseUrl'],'http://localhost/tk/kwd_website/api/');
+		$jao = new kwd_jsonapi_test('get','http','localhost2/tk/kwd_website/');
+		$this->assertSame($jao->getConfiguration()['baseUrl'],'http://localhost2/tk/kwd_website/api/');
+		$jao = new kwd_jsonapi_test('get','http','localhost3/tk/kwd_website//');
+		$this->assertSame($jao->getConfiguration()['baseUrl'],'http://localhost3/tk/kwd_website/api/');
 
-		$this->jsonApiObject->init('get','http','api=','localhost2/tk/kwd_website/');
-		$this->assertSame($this->jsonApiObject->getConfiguration()['baseUrl'],'http://localhost2/tk/kwd_website/api/');
-		$this->jsonApiObject->init('get','http','api=','localhost3/tk/kwd_website//');
-		$this->assertSame($this->jsonApiObject->getConfiguration()['baseUrl'],'http://localhost3/tk/kwd_website/api/');
+		// ... hope GC frees mem of all the 3 objects
 	}
 
 	public function testNoApiRequest() {
-		// should not generate json because not found in query string
-		$this->jsonApiObject->init('GET','http','article_id=1&amp;clang=1','localhost');
-		$ret = $this->jsonApiObject->buildResponse();
-		$this->assertEquals($ret,'','empty string is ok here');
-		$this->jsonApiObject->init('GET','http','/','localhost');
-		$ret = $this->jsonApiObject->buildResponse();
-		$this->assertEquals($ret,'','empty string is ok here');
-		$this->jsonApiObject->init('GET','http','','localhost');
-		$ret = $this->jsonApiObject->buildResponse();
-		$this->assertEquals($ret,'','empty string is ok here');
+		$jao = new kwd_jsonapi_test('get','http','localhost/tk/kwd_website///','article_id=1&amp;clang=1');
+		$this->assertEquals($jao->buildResponse(),'','empty string is ok here');
+
+		$jao = new kwd_jsonapi_test('get','http','localhost/tk/kwd_website','/');
+		$this->assertEquals($jao->buildResponse(),'','empty string is ok here');
+
+		$jao = new kwd_jsonapi_test('get','http','localhost/tk/kwd_website','');
+		$this->assertEquals($jao->buildResponse(),'','empty string is ok here');
 	}
 
 	public function testCollectingHeadersSeparately() {
+		$jao = new kwd_jsonapi_test(); // default init
 		$accesControlOrigin = 'Access-Control-Allow-Origin: *';
 		// ??? add additional init because otherwise the array already filled
-		$this->assertSame($this->jsonApiObject->getHeaders(),array(),'must be empty array because no response built');
-		$headers = $this->jsonApiObject->addHeader('HTTP/1.0 403 Forbidden');
-		$headers = $this->jsonApiObject->addHeader($accesControlOrigin);
-		$headers = $this->jsonApiObject->addHeader('Content-Type: application/json; charset=UTF-8');
-		$this->assertCount(3,$this->jsonApiObject->getHeaders(),'should insert 3 entries');
-		$this->assertEquals($this->jsonApiObject->getHeaders()[0],'HTTP/1.0 403 Forbidden','sample check index 0');
-		$this->assertEquals($this->jsonApiObject->getHeaders()[1],$accesControlOrigin,'sample check index 1');
+		$this->assertSame($jao->getHeaders(),array(),'must be empty array because no response built');
+		$headers = $jao->addHeader('HTTP/1.0 403 Forbidden');
+		$headers = $jao->addHeader($accesControlOrigin);
+		$headers = $jao->addHeader('Content-Type: application/json; charset=UTF-8');
+		$this->assertCount(3,$jao->getHeaders(),'should insert 3 entries');
+		$this->assertEquals($jao->getHeaders()[0],'HTTP/1.0 403 Forbidden','sample check index 0');
+		$this->assertEquals($jao->getHeaders()[1],$accesControlOrigin,'sample check index 1');
 	}
 
 	public function testApiRootResponse() {
-		$this->jsonApiObject->init('GET','http','api=','localhost');
-		$ret = $this->jsonApiObject->buildResponse(); // better name
+		$jao = new kwd_jsonapi_test('GET','http','localhost','api=');
+		$ret = $jao->buildResponse(); // better name
 		$this->assertTrue(is_string($ret));
 		// how assert error/no error ???
 		$retJSON = json_decode($ret); // makes object!
@@ -153,8 +136,8 @@ class KwdJsonApiTestCase extends TestCase {
 	}
 
 	public function testIgnoreApiOnBuildResponse() {
-		$this->jsonApiObject->init('GET','http','article_id=23','localhost');
-		$ret = $this->jsonApiObject->buildResponse();
+		$jao = new kwd_jsonapi_test('GET','http','article_id=23','localhost');
+		$ret = $jao->buildResponse();
 		$this->assertTrue(is_string($ret));
 		$this->assertSame($ret,'','no API request must lead to empty string');
 	}
@@ -165,8 +148,9 @@ class KwdJsonApiTestCase extends TestCase {
 	}
 
 	public function testGenerateResponseForRootCategoriesRequest() {
+		$jao = new kwd_jsonapi_test();
 
-		$response = $this->jsonApiObject->buildResponse();
+		$response = $jao->buildResponse();
 		$this->assertInternalType('string',$response);
 		$this->assertGreaterThan(3,strlen($response)); // should not be empty (which is for rejected request)
 

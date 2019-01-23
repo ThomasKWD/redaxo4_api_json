@@ -68,7 +68,7 @@ abstract class kwd_jsonapi {
 	}
 
 	/** reset query string
-	*	- simple setter to eeasily change config after init
+	*	- simple setter to easily change config after init
 	*	! modifies object property
 	*   @return string newly set string
 	*/
@@ -78,7 +78,7 @@ abstract class kwd_jsonapi {
 		return $this->api;
 	}
 
-	public function init ($requestMethod = 'get', $requestScheme = 'http', $queryString = '', $serverPath) {
+	protected function init ($requestMethod = 'get', $requestScheme = 'http', $serverPath = '/', $queryString = '') {
 		$this->requestMethod = $this->buildRequestMethod($requestMethod);
 		$this->baseUrl = $this->buildBaseUrl($requestScheme,$serverPath);
 		$this->setApiQueryString($queryString);
@@ -108,7 +108,7 @@ abstract class kwd_jsonapi {
 
 	protected function getSubLink($id,$name = '') {
 		$entry['id'] = $id;
-		if ($name) $entry['title'] = $name;
+		if ($name) $entry['name'] = $name;
 		$entry['link'] = $this->articleLink($id);
 		// return array
 		return $entry;
