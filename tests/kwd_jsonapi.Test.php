@@ -7,16 +7,16 @@ require_once('../classes/kwd_jsonapi.php');
 class mockRexArticle {
 	private $id;
 	private $name;
-	private $catname;
-	private $isStartArticle;
+	private $_isStartArticle;
 	private $content;
+	private $clang_id;
 
-	function __construct($id, $catname = '', $isStartArticle = false, $content = '') {
+	function __construct($id, $name = '', $clang_id = 0, $isStartArticle = false, $content = '') {
 		$this->id = $id;
-		$this->name = $catname .'_article';
-		$this->catname = $catname;
-		$this->$isStartArticle = $isStartArticle ? true : false;
+		$this->name = $name;
+		$this->_isStartArticle = $isStartArticle ? true : false;
 		$this->content = $content;
+		$this->clang_id = $clang_id;
 	}
 
 	function getId() {
@@ -26,6 +26,15 @@ class mockRexArticle {
 	function getName() {
 		return $this->name;
 	}
+
+	function getClang() {
+		return $this->clang_id;
+	}
+
+	function isStartArticle() {
+		return $this->_isStartArticle;
+	}
+
 }
 
 class mockRexCategory {
@@ -33,15 +42,17 @@ class mockRexCategory {
 	private $id;
 	private $name;
 	private $articles = [];
+	private $clang_id;
 
-	public function _addArticle($id,$name,$isStartArticle,$content) {
-		$this->articles[] = new mockRexArticle($id,$name,$isStartArticle,$content);
+	protected function _addArticle($id,$name,$clang_id,$isStartArticle,$content) {
+		return new mockRexArticle($id,$name,$clang_id,$isStartArticle,$content);
 	}
 
-	function __construct($id,$name) {
+	function __construct($id,$name,$clang_id) {
 		$this->id = $id;
 		$this->name = $name;
-		$this->articles[] = $this->_addArticle($id,$name,true,'<p>voll der Start-Artikel Content</p>');
+		$this->clang_id = $clang_id;
+		$this->articles[] = $this->_addArticle($id,$name.'_article',$clang_id,true,'<p>voll der Start-Artikel Content</p>');
 	}
 
 	public function getId() {
@@ -59,15 +70,15 @@ class mockRexCategory {
 	public function getChildren() {
 		$myCats = array();
 
-		$myCats[] = new self(12,'Shuri Ryu Berlin');
-		$myCats[] = new self(7,'Tangará Berlin');
-		$myCats[] = new self(13,'Moldt Events');
+		$myCats[] = new self(12,'Shuri Ryu Berlin',$this->clang_id);
+		$myCats[] = new self(7,'Tangará Berlin',$this->clang_id);
+		$myCats[] = new self(13,'Moldt Events',$this->clang_id);
 
 		return $myCats;
 	}
 
 	public function getArticles() {
-		return $articles;
+		return $this->articles;
 	}
 }
 
@@ -77,9 +88,9 @@ class kwd_jsonapi_test extends kwd_jsonapi {
 	public function getRootCategories($ignore_offlines = false, $clang = 0) {
 		// to mock the root categories we just generate objects from a json
 		$rootCats = array();
-		$rootCats[] = new mockRexCategory(1,'Start');
-		$rootCats[] = new mockRexCategory(21,'News');
-		$rootCats[] = new mockRexCategory(3,'Referenzen');
+		$rootCats[] = new mockRexCategory(1,'Start',$clang);
+		$rootCats[] = new mockRexCategory(21,'News',$clang);
+		$rootCats[] = new mockRexCategory(3,'Referenzen',$clang);
 
 		return $rootCats;
 	}
@@ -89,7 +100,11 @@ class kwd_jsonapi_test extends kwd_jsonapi {
 		if ($clang > 0) return null;
 		if ($id !== 3) return null;
 		// tODO: mock $d ===0
-		return new mockRexCategory(3,'Referenzen');
+		return new mockRexCategory(3,'Referenzen',$clang);
+	}
+
+	public function getRootArticles($ignore_offlines = false, $clang_id = 0) {
+		return [ new mockRexArticle(67,'Test Root Article', $clang_id, false, '<p>Body of root article</p>')];
 	}
 
 	public function getArticleById($id, $clang = 0) {
@@ -206,7 +221,7 @@ class KwdJsonApiTestCase extends TestCase {
 		// print_r($json);
 
 		$this->assertTrue(strncmp('api/',$json->request,4) === 0,$json->request.' must start with "api/"');
-		$this->assertSame(0,$json->clang_id,'must provide langauge clang_id');
+		$this->assertSame(0,$json->clang_id,'must provide language clang_id');
 
 		// check categories, then 1 in detail, then inner article of the first
 		// /api/categories
@@ -283,14 +298,8 @@ class KwdJsonApiTestCase extends TestCase {
 		$this->assertEquals($cat1->id,13,'id of 3rd sub category');
 		$this->assertTrue(!isset($cat1->prior),'!isset: we want NOT prior defined because categories always given by prio');
 
-		// // first article of 2nd cat
-		$this->assertTrue(is_array($cat1->articles),'field "articles" must be there and be an array');
-		$this->assertEquals(1,count($cat1->articles),'field "articles" must contain 1 element');
-		$art1 = $cat1->articles[0];
-		$this->assertTrue($art1 !== null);
-		$this->assertEquals('Moldt Events_article',$art1->name);
-		$this->assertEquals(13,$art1->id);
-		$this->assertTrue($art1->is_start_article);
+		// // article of 2nd cat must NOT be present
+		$this->assertFalse(isset($cat1->articles),'field "articles" must NOT be in this repsonse');
 	}
 
 	// /api/categories/3/0/ must be valid and equal to /api/categories/3
@@ -327,14 +336,52 @@ class KwdJsonApiTestCase extends TestCase {
 		$this->assertSame('Resource for this request not found.',$json->error->message,'should have "not found" message');
 	}
 
+	// /api/categories/3/articles
+	function testRequestCategoryWithSubCategoriesAndSubArticles() {
+		$response = $this->getResponseFromNew('/api/categories/3/articles');
+
+		$this->assertEquals(1,count($response->articles),'field "articles" of catmust contain 1 element');
+
+		$cat1 = $response->categories[0];
+		$this->assertSame('Shuri Ryu Berlin',$cat1->name,'should have a subcat with name');
+
+		$art1 = $cat1->articles[0];
+		$this->assertTrue($art1 !== null);
+		$this->assertEquals('Shuri Ryu Berlin_article',$art1->name,'should have article name');
+		$this->assertEquals(12,$art1->id);
+		$this->assertTrue($art1->is_start_article,'should set as "start article"');
+	}
+
+	// /api/categories/3/content
+	//  ! must be invalid
+	function testRequestCategoryWithContentBadRequest() {
+		$jao = new kwd_jsonapi_test();
+		$jao->setApiQueryString('api=categories/3/content');
+		$response = $jao->buildResponse();
+		$json = json_decode($response);
+		$headers = $jao->getHeaders();
+
+		$this->assertTrue(isset($json->error->message),'should have error field with message');
+		$this->assertContains('HTTP/1.1 400 Bad Request',$headers);
+	}
+
+	// /api/categories/articles/content
+	function testRequestRootCategoriesWithContent() {
+		$json = $this->getResponseFromNew('/api/categories/articles/content');
+
+		// sample: pick cat2, start article content
+		$art = $json->categories[1]->articles[0];
+		// $this->assertSame(21,$art->id,'should have proper id');
+		// $this->assertSame('News_article',$art->name,'should have proper id');
+		$this->assertTrue(isset($art->body),'should have body');
+		$this->assertInternalType('string',$art->body);
+	}
+
+	// !!! planning to remove keyword "content"
 	// /api/content
-	// ??? content only when .../articles
-
-
 	// ??? don't use ".../content" at all
 	// /api/categories/3/articles/content
 
-	// /api/categories/3/content
 	// /api/categories/3/contentandmetainfo
 
 	// IDEA: /api/categories traverses *entire structure*
