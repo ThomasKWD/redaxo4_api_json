@@ -9,6 +9,10 @@ class kwd_jsonapi_rex4 extends kwd_jsonapi {
 		return OOCategory::getRootCategories($ignore_offlines,$clang);
 	}
 
+	protected function getRootArticles($ignore_offlines = false, $clang = 0) {
+		return OOArticle::getRootArticles($ignore_offlines,$clang);
+	}
+
 	protected function getCategoryById($id, $clang = 0) {
 		return OOCategory::getCategoryById($id, $clang);
 	}

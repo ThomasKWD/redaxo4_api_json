@@ -7,12 +7,16 @@ require_once('../classes/kwd_jsonapi.php');
 class mockRexArticle {
 	private $id;
 	private $name;
-	private $isStartarticle;
+	private $catname;
+	private $isStartArticle;
+	private $content;
 
-	function __construct($id,$catname,$isStartarticle) {
+	function __construct($id, $catname = '', $isStartArticle = false, $content = '') {
 		$this->id = $id;
-		$name = $catname .'_article';
-		$this->$isStartarticle = $isStartarticle ? true : false;
+		$this->name = $catname .'_article';
+		$this->catname = $catname;
+		$this->$isStartArticle = $isStartArticle ? true : false;
+		$this->content = $content;
 	}
 
 	function getId() {
@@ -28,10 +32,16 @@ class mockRexCategory {
 
 	private $id;
 	private $name;
+	private $articles = [];
+
+	public function _addArticle($id,$name,$isStartArticle,$content) {
+		$this->articles[] = new mockRexArticle($id,$name,$isStartArticle,$content);
+	}
 
 	function __construct($id,$name) {
 		$this->id = $id;
 		$this->name = $name;
+		$this->articles[] = $this->_addArticle($id,$name,true,'<p>voll der Start-Artikel Content</p>');
 	}
 
 	public function getId() {
@@ -43,7 +53,21 @@ class mockRexCategory {
 	}
 
 	public function getStartArticle() {
-		return new mockRexArticle($this->id,$this->name,true);
+		return $this->articles[0];
+	}
+
+	public function getChildren() {
+		$myCats = array();
+
+		$myCats[] = new self(12,'Shuri Ryu Berlin');
+		$myCats[] = new self(7,'Tangará Berlin');
+		$myCats[] = new self(13,'Moldt Events');
+
+		return $myCats;
+	}
+
+	public function getArticles() {
+		return $articles;
 	}
 }
 
@@ -61,7 +85,11 @@ class kwd_jsonapi_test extends kwd_jsonapi {
 	}
 
 	public function getCategoryById($id, $clang = 0) {
-		return null;
+		// mock clang > 0 not found == null
+		if ($clang > 0) return null;
+		if ($id !== 3) return null;
+		// tODO: mock $d ===0
+		return new mockRexCategory(3,'Referenzen');
 	}
 
 	public function getArticleById($id, $clang = 0) {
@@ -79,6 +107,24 @@ class kwd_jsonapi_test extends kwd_jsonapi {
 }
 
 class KwdJsonApiTestCase extends TestCase {
+
+	private function getResponseFromNew($queryString,$returnString = false) {
+		$jao = new kwd_jsonapi_test();
+		$jao->setApiQueryString(str_replace('/api/','api=',$queryString));
+		$response = $jao->buildResponse();
+		$json = json_decode($response);
+
+		if ($returnString) return $response;
+		return $json;
+	}
+
+	private function getHeadersForResponseFromNew($queryString,$search = '') {
+		$jao = new kwd_jsonapi_test();
+		$jao->setApiQueryString(str_replace('/api/','api=',$queryString));
+		$jao->buildResponse();
+
+		return $jao->getHeaders();
+	}
 
     public function testInitInConstructor() {
 		$jao = new kwd_jsonapi_test(); // default settings see test class declaration
@@ -142,13 +188,8 @@ class KwdJsonApiTestCase extends TestCase {
 		$this->assertSame($ret,'','no API request must lead to empty string');
 	}
 
-	public function testGenerateResponseForEntryPoint() {
-		// ??? make sure no categories yet
-		$this->markTestIncomplete('// ??? IDEA: could demand "/api/categories" while /api/just gives meta infos');
-	}
-
-	public function testGenerateResponseForRootCategoriesRequest() {
-		$jao = new kwd_jsonapi_test();
+	// ! helper used 2x
+	private function runCodeForTestingRootCats($jao) {
 
 		$response = $jao->buildResponse();
 		$this->assertInternalType('string',$response);
@@ -164,6 +205,9 @@ class KwdJsonApiTestCase extends TestCase {
 
 		// print_r($json);
 
+		$this->assertTrue(strncmp('api/',$json->request,4) === 0,$json->request.' must start with "api/"');
+		$this->assertSame(0,$json->clang_id,'must provide langauge clang_id');
+
 		// check categories, then 1 in detail, then inner article of the first
 		// /api/categories
 		$this->assertTrue(isset($json->categories),'No entry "categories"');
@@ -175,16 +219,126 @@ class KwdJsonApiTestCase extends TestCase {
 		$this->assertEquals($cat1->id,1,'id of first root category');
 		$this->assertTrue(!isset($cat1->prior),'!isset: we want NOT prior defined because root categories always given by prio');
 
-		// first article of first cat
-		$this->assertTrue(is_array($cat1->articles),'field "articles" must be there and be an array');
-		$art1 = $cat1->articles[0];
-
-		// $this->assertTrue(isset($json->categories),'false means: the list of "categories" not found');
+		// ! first article should NOT have article
+		$this->assertTrue(!isset($cat1->articles),'field "articles"(array) must NOT be there');
 	}
 
+	// /api
+	public function testGenerateResponseForEntryPoint() {
+		$jao = new kwd_jsonapi_test();
+		$this->runCodeForTestingRootCats($jao);
+	}
+
+	// /api/0/ must be invalid
+	public function testLanguage0OnEntryPoint() {
+		$json = $this->getResponseFromNew('/api/0');
+		$this->assertTrue(isset($json->error),'error entry must be existent');
+	}
+
+	// /api/1/ must be invalid
+	public function testLanguage1OnEntryPoint() {
+		$json = $this->getResponseFromNew('/api/1');
+		$this->assertTrue(is_object($json->error));
+	}
+
+
+	// /api/categories
+	public function testGenerateResponseForRootCategories() {
+		$jao = new kwd_jsonapi_test();
+		$jao->setApiQueryString('api=categories');
+		$this->runCodeForTestingRootCats($jao);
+	}
+
+	// ! now with trailing slash
+	// /api/categories/
+	public function testGenerateResponseForRootCategoriesWithTrailingSlash() {
+		$jao = new kwd_jsonapi_test();
+		$jao->setApiQueryString('api=categories/');
+		$this->runCodeForTestingRootCats($jao);
+	}
+
+
+	// ! following tests are reduced thus rely on more detailed checks above
+
 	// /api/categories/3
+	public function testGenerateResponseForCertainCategory() {
+
+		// TODO: make helper function for this 4 lines:
+		$jao = new kwd_jsonapi_test();
+		$jao->setApiQueryString('api=categories/3');
+		$response = $jao->buildResponse();
+		$json = json_decode($response);
+
+		$this->assertSame($json->name,'Referenzen');
+		$this->assertSame($json->id,3);
+		// ! categories now contains sub catgeories of category 3
+		$this->assertTrue(isset($json->categories),'No entry "categories"');
+		$this->assertTrue(is_array($json->categories),'"categories" is not an array');
+		$definedKids = 3;
+		$this->assertEquals($definedKids,count($json->categories),"defined $definedKids sub cats online (cat id == 3)");
+
+		// sample: 3rd kid
+		$cat1 = $json->categories[2];
+		$this->assertEquals($cat1->name,'Moldt Events','Name of 3rd sub category'); // ! now name, not title
+		$this->assertEquals($cat1->id,13,'id of 3rd sub category');
+		$this->assertTrue(!isset($cat1->prior),'!isset: we want NOT prior defined because categories always given by prio');
+
+		// // first article of 2nd cat
+		$this->assertTrue(is_array($cat1->articles),'field "articles" must be there and be an array');
+		$this->assertEquals(1,count($cat1->articles),'field "articles" must contain 1 element');
+		$art1 = $cat1->articles[0];
+		$this->assertTrue($art1 !== null);
+		$this->assertEquals('Moldt Events_article',$art1->name);
+		$this->assertEquals(13,$art1->id);
+		$this->assertTrue($art1->is_start_article);
+	}
+
+	// /api/categories/3/0/ must be valid and equal to /api/categories/3
+	public function testLanguage0EqualsLanguageDefault() {
+		$res1 = $this->getResponseFromNew('/api/categories/3',true); // ! get plain string
+		$json1 = json_decode($res1);
+		$this->assertEquals('Referenzen',$json1->name, 'selected my test cat.');
+		$res2 = $this->getResponseFromNew('/api/categories/3/0',true);
+		$this->assertTrue(strstr($res2,'"request":"api\/categories\/3\/0"') !== false,'should contain "request":"api\/categories\/3\/0"');
+
+		// ! equalizes the request to quickly compare the rest:
+		$res2 = str_replace('"request":"api\/categories\/3\/0"','"request":"api\/categories\/3"',$res2);
+
+		$this->assertEquals($res1,$res2, 'response should be the same.');
+	}
+
+	// /api/categories/3/1 must be valid but not found
+	public function testLanguage1NotFound() {
+		$json = $this->getResponseFromNew('/api/categories/3/1');
+		// TODO: how to test received headers?
+		$this->assertTrue(isset($json->error),'should have error element');
+		$headers = $this->getHeadersForResponseFromNew('/api/categories/3/1');
+		$this->assertContains('HTTP/1.1 404 Not Found',$headers,'must contain HTTP 404 header');
+	}
+
+	// don't test because its internal behaviour of Redaxo:
+	// /api/categories/0/0 must be valid and equals to root cats
+	// /api/categories/0/1 must be valid but not found
+
+	// /api/categories/1234
+	function testRequestUnknownCategory() {
+		$json = $this->getResponseFromNew('/api/categories/1234');
+		$this->assertTrue(isset($json->error),'should have error element');
+		$this->assertSame('Resource for this request not found.',$json->error->message,'should have "not found" message');
+	}
+
+	// /api/content
+	// ??? content only when .../articles
+
+
+	// ??? don't use ".../content" at all
+	// /api/categories/3/articles/content
+
 	// /api/categories/3/content
 	// /api/categories/3/contentandmetainfo
+
+	// IDEA: /api/categories traverses *entire structure*
+	// ??? /api/categories/3/articles ??
 
 	// pubclic function testRequestSingleArticle
 	// - actually you could send metadata+content always
@@ -192,6 +346,9 @@ class KwdJsonApiTestCase extends TestCase {
 	// /api/articles/12/metadata
 	// /api/articles/12/content
 	// /api/articles/12/[data|slices]
+
+	// /api/help
+	// - should also suggest "/api/categories/0/content"
 
 	public function testSendResponse() {
 		// ??? how to test successful send

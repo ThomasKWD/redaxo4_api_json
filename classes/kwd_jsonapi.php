@@ -16,6 +16,7 @@ abstract class kwd_jsonapi {
 
 	abstract protected function getRootCategories($ignore_offlines = false,$clang = 0);
 	abstract protected function getCategoryById($id, $clang = 0);
+	abstract protected function getRootArticles($ignore_offlines = false,$clang = 0);
 	abstract protected function getArticleById($id,$clang = 0);
 
 	function __construct($requestMethod = 'get', $requestScheme = 'http', $queryString = '', $serverPath) {
@@ -115,14 +116,24 @@ abstract class kwd_jsonapi {
 	}
 
 	// get data from OOarticle object
-	protected function addArticle($art,$isStartarticle,$demandContent = false, $demandMetaInfo = false) {
+	protected function addArticle($art, $demandMetaInfo = false) {
 		$res = array();
 		// order matters:
 		$res['id'] = $art->getId();
 		$res['name'] = $art->getName();
-		$res['is_start_article'] = $isStartarticle ? true : false;
+		$res['is_start_article'] = $art->isStartArticle() ? true : false;
 
 		return $res;
+	}
+
+	protected function addAllArticlesOfCategory($cat,$demandMetaInfo = false) {
+		$ret = [];
+
+		foreach($cat->getArticles() as $art) {
+			$ret[] = $this->addArticle($art,$demandMetaInfo);
+		}
+
+		return $ret;
 	}
 
 	// IDEA: try to design/write it without passing response object
@@ -141,12 +152,47 @@ abstract class kwd_jsonapi {
 	}
 
 	protected function articleLink($article_id,$clang_id = 0,$showContent = false) {
-		return $this->apiLink('articles/'.$article_id.'/'.($clang_id ? $clang_id + 1 : 1).($showContent ? '/content' : ''));
+		return $this->apiLink('articles/'.$article_id.'/'.$clang_id.($showContent ? '/content' : ''));
 	}
 
 	//  --- API DATA GENERATION
 
-	/// ??? don't send headers but collect them
+	// always returns array,
+	// - was more complicated and now remains function
+	protected function splitTrimmed($string) {
+		return explode('/',$string);
+	}
+
+	protected function generateSyntaxError($apiString) {
+
+		$response = [];
+
+		// articles/categories not found
+		$this->addHeader('HTTP/1.1 400 Bad Request');
+		$response['request']= 'api/'.$apiString;
+		$response['error']['message'] = 'Syntax error or unknown request component';
+		$response['error']['help']['info'] = 'See links for entry point or help.';
+		$response['error']['help']['links'][] = $this->apiLink('');
+		$response['error']['help']['links'][] = $this->apiLink('help');
+
+		return $response;
+	}
+
+	protected function generateResourceNotFound($apiString) {
+		$response;
+
+		$this->addHeader("HTTP/1.1 404 Not Found");
+
+		$response['request'] = 'api/'.$apiString;
+		$response['error']['message'] = 'Resource for this request not found.';
+		$response['error']['help']['info'] = 'Start with /api or /api/categories';
+		$response['error']['help']['links'][] = $this->apiLink('');
+		$response['error']['help']['links'][] = $this->apiLink('categories');
+		$response['error']['help']['links'][] = $this->apiLink('help');
+		return $response;
+	}
+
+
 	public function buildResponse() {
 
 		$api = $this->api;
@@ -172,194 +218,264 @@ abstract class kwd_jsonapi {
 				// used to make api links clickable
 				$host = $this->baseUrl; // ???: check id SERVER var correct in all cases!
 
-				// asociate array which is written out as JSON object
-				$request = explode('/',str_replace(self::APIMARKER,'',$api));
+				$api = strtolower($api);
+				$api = str_replace(self::APIMARKER,'',$api);
+				$api = trim($api," /\t\r\n\0\x0B"); // remove multiple slashes as well
 
-				$response['request'] = str_replace(self::APIMARKER,'api/',$api);
-				$response['debug']['queryString'] = $api;
-				$response['debug']['query'] = $api;
-				$response['debug']['host'] = $host;
-
-				$content = false;
-				if (count($request) && $request[count($request) - 1] == 'content') {
-					$content = true;
-					array_pop($request);
+				if (strstr($api,'//')) {
+					$response = generateSyntaxError($api);
 				}
+				else {
+					// request string as array:
+					$request = $this->splitTrimmed($api);
 
-				//$response['debug']['explode'] = $request;
-				if ($request[0] == 'help') {
-					$response['info'] = 'The project consists of "articles". Each article has an id. You always have to add "/content" to get article content. Articles representing a collection provide a field "list". This is the way to see the hiarchical structure. For examples see the "examples" entries here.';
-					$response['examples'] = array(
-						array('info' => 'Entry point', 'link' => $this->apiLink('')),
-						array('info' => 'Alternative entry point because no id specified', 'link' => $this->apiLink('articles')),
-						array('info' => 'Certain article (default language)', 'link' => $this->apiLink('articles/48')),
-						array('info' => 'Certain article with certain language ', 'link' => $this->apiLink('articles/48/1')),
-						array('info' => 'Certain article with content body', 'link' => $this->apiLink('articles/48/content')),
-						array('info' => 'Certain article with content body and certain language', 'link' => $this->apiLink('articles/48/1/content')),
-						array('info' => 'If the article contains sub articles it provides the bodies in the entries of "list".', 'link' => $this->apiLink('articles/3/content'))
-					);
-					$response['external'] = array(
-						array('info' => 'Understand basic concept of categories and articles:', 'link' => 'https://redaxo.org')
-					);
-				}
-				else if ($request[0] == 'articles') {
-					if (!isset($request[1]) || $request[1] == '') {
+					// first remove entries which may come from leading/trailing slashes "/":
 
-						// tests to get ALL articles
-						// $articles = OOArticle::getAll();//???
-						// !!! make a nested loop for all because there should not be an article outside the structure
-						// getAllSubArticles(rootCategories)
+					$response['request'] = 'api/'.$api;
+					$response['debug']['queryString'] = $api;
+					$response['debug']['host'] = $host;
 
-						$this->addHeader('HTTP/1.1 404 Resource not found');
-						$response['error']['message'] = 'Listing all articles is not *yet* supported. You can specify an id or use the entry point "/api".';
-						$response['error']['links'][] = $this->apiLink('');
-						$response['error']['links'][] = $this->apiLink('help');
+					$content = false;
+					$showArticlesOfCategory = false;
+
+					if ($request[count($request) - 1] === 'content') {
+						$content = true;
+						array_pop($request);
 					}
-					else {
-						$article_id = intval($request[1]);
-						if ($article_id) {
-							 // ! language id counting from 1
-							if (isset($request[2]) && $request[2] != '') {
-								$clang_id = intval($request[2]);
-								// ! only minus 1 if valid id, because invalid string lead to 0 anyway
-								if ($clang_id > 0) $clang_id--;
-								else if ($request[2]) {
-									// error because omitted language or large number already checked
-									// TODO: how to unset id, title etc.
-									// $this->addHeader('HTTP/1.1 400 Syntax Error');
-									$response['warning']['message'] = 'Invalid argument for language. You may provide number and/or "content". See "examples". Note that your request is still processed';
-									$response['warning']['examples']['links'] = array(
-										$this->apiLink('articles/'.$article_id),
-										$this->articleLink($article_id),
-										$this->apiLink('articles/'.article_id.'/content'),
-										$this->articleLink($article_id,0,true)
-									);
-								}
-							}
-							else $clang_id = 0;
+					if (count($request) > 1 && $request[count($request) - 1] === 'articles') {
+						$showArticlesOfCategory = true;
+						array_pop($request);
+					}
 
-							$article = $this->getArticleById($article_id,$clang_id);
+					//$response['debug']['explode'] = $request;
+					if ($request[0] == 'help') {
+						$response['info'] = 'The project consists of "articles". Each article has an id. You always have to add "/content" to get article content. Articles representing a collection provide a field "list". This is the way to see the hiarchical structure. For examples see the "examples" entries here.';
+						$response['examples'] = array(
+							array('info' => 'Entry point', 'link' => $this->apiLink('')),
+							array('info' => 'Alternative entry point because no id specified', 'link' => $this->apiLink('articles')),
+							array('info' => 'Certain article (default language)', 'link' => $this->apiLink('articles/48')),
+							array('info' => 'Certain article with certain language ', 'link' => $this->apiLink('articles/48/1')),
+							array('info' => 'Certain article with content body', 'link' => $this->apiLink('articles/48/content')),
+							array('info' => 'Certain article with content body and certain language', 'link' => $this->apiLink('articles/48/1/content')),
+							array('info' => 'If the article contains sub articles it provides the bodies in the entries of "list".', 'link' => $this->apiLink('articles/3/content'))
+						);
+						$response['external'] = array(
+							array('info' => 'Understand basic concept of categories and articles:', 'link' => 'https://redaxo.org')
+						);
+					}
 
-							if ($article) {
-								// TODO: check for null!!!, clang_id can be wrong or invalid!, $article_id can be wrong
-								$response['id'] =  $article_id;
-								$response['category'] = $article->getValue('category_id');
-								$response['language'] =  $clang_id + 1; // ! language id counting from 1
-								$response['title'] = $article->getValue('name');
-								$response['info'] = ''; // now we can concat text
+					// TODO: This must become output of single article
+					// IDEA: This automatically generates more detailed output
+					else if ($request[0] == 'articles') {
+						if (!isset($request[1])) {
 
-								// check for "content article", by metainfo?? by checking slices??
-								// ! not distinguishing between types anymore
-								// $artType = $article->getValue('art_type_id');
+							// tests to get ALL articles
+							// $articles = OOArticle::getAll();//???
+							// !!! make a nested loop for all because there should not be an article outside the structure
+							// getAllSubArticles(rootCategories)
 
-								//try to provide link list
-								$response['sub_articles'] = array();
-								// get my category
-								// - if there are sub categories assume one child for each sub cat
-								// ??? why not pass $clang_id
-								$cat = $this->getCategoryById($article->getValue('category_id'));
-								$kids = $cat->getChildren(true); // true means only "onlines"
-								if (count($kids)) {
-									$i=0;
-									foreach($kids as $k) {
-										$response['sub_articles'][$i] = $this->getSubLink($k->getId(),$k->getName());
-										$kidArticleId = $k->getStartArticle()->getId();
-										$response['debug']['sub_articles'][$i]['body'] = $kidArticleId; $this->addContent($response['sub_articles'][$i],$content,$kidArticleId,$clang_id);
-										$i++;
+							$this->addHeader('HTTP/1.1 404 Resource not found');
+							$response['error']['message'] = 'Listing all articles is not *yet* supported. You can specify an id or use the entry point "/api".';
+							$response['error']['links'][] = $this->apiLink('');
+							$response['error']['links'][] = $this->apiLink('help');
+						}
+						else {
+							$article_id = intval($request[1]);
+							if ($article_id) {
+								if (isset($request[2])) {
+									if (is_numeric($request[2])) { // also handles empty string
+										$clang_id = intval($request[2]);
 									}
-									if (count($response['sub_articles'])) {
-										$response['info'] .= ' List of start articles of sub categories.';
-									}
-									else {
-										unset($response['sub_articles']);
-										$response['info'] .= ' No articles in  subcategories.';
+									else if ($request[2]) {
+										// error because omitted language or large number already checked
+										// TODO: how to unset id, title etc.
+										// $this->addHeader('HTTP/1.1 400 Syntax Error');
+										$response['warning']['message'] = 'Invalid argument for language. You may provide number and/or "content". See "examples". Note that your request is still processed';
+										$response['warning']['examples']['links'] = array(
+											$this->apiLink('articles/'.$article_id),
+											$this->articleLink($article_id),
+											$this->apiLink('articles/'.article_id.'/content'),
+											$this->articleLink($article_id,0,true)
+										);
 									}
 								}
-								else {
-									// try to get articles in cat itself
-									// - ignore start article
-									$kids = $cat->getArticles(true);
+								else $clang_id = 0;
 
-									$i = 0;
-									foreach($kids as $k) {
-										if ($k->getId() !== $cat->getId()) {
+								$article = $this->getArticleById($article_id,$clang_id);
+
+								if ($article) {
+									// TODO: check for null!!!, clang_id can be wrong or invalid!, $article_id can be wrong
+									$response['id'] =  $article_id;
+									$response['category_id'] = $article->getValue('category_id');
+									$response['clang_id'] =  $clang_id; // ! language id counting from 1
+									$response['title'] = $article->getValue('name');
+									$response['info'] = ''; // now we can concat text
+
+									// check for "content article", by metainfo?? by checking slices??
+									// ! not distinguishing between types anymore
+									// $artType = $article->getValue('art_type_id');
+
+									//try to provide link list
+									$response['sub_articles'] = array();
+									// get my category
+									// - if there are sub categories assume one child for each sub cat
+									// ??? why not pass $clang_id
+									$cat = $this->getCategoryById($article->getValue('category_id'));
+									$kids = $cat->getChildren(true); // true means only "onlines"
+									if (count($kids)) {
+										$i=0;
+										foreach($kids as $k) {
 											$response['sub_articles'][$i] = $this->getSubLink($k->getId(),$k->getName());
-											$this->addContent($response['sub_articles'][$i],$content,$article_id,$clang_id);
+											$kidArticleId = $k->getStartArticle()->getId();
+											$response['debug']['sub_articles'][$i]['body'] = $kidArticleId; $this->addContent($response['sub_articles'][$i],$content,$kidArticleId,$clang_id);
 											$i++;
 										}
-									}
-									if (count($response['sub_articles'])) {
-										$response['info'] .= 'List of sub articles. Startarticle of category is ignored';
+										if (count($response['sub_articles'])) {
+											$response['info'] .= ' List of start articles of sub categories.';
+										}
+										else {
+											unset($response['sub_articles']);
+											$response['info'] .= ' No articles in  subcategories.';
+										}
 									}
 									else {
-										$response['info'] .= ' No subarticles online.';
-										unset($response['sub_articles']);
-									}
-									// ! you can't use count($kids) directly, since check for startarticle inside loop
-								}
+										// try to get articles in cat itself
+										// - ignore start article
+										$kids = $cat->getArticles(true);
 
-								// always add own content
-								$this->addContent($response,$content,$article_id,$clang_id);
-								if (!$content) {
-									$response['help']['info'] = 'You may add "/content" to get the body of the article.';
-									// TODO: make convention to present links always the same
-									$output_clang = $clang_id + 1;
-									$response['help']['links'] = [];
-									$response['help']['links'][] = $this->articleLink($article_id,$clang_id,true);
+										$i = 0;
+										foreach($kids as $k) {
+											if ($k->getId() !== $cat->getId()) {
+												$response['sub_articles'][$i] = $this->getSubLink($k->getId(),$k->getName());
+												$this->addContent($response['sub_articles'][$i],$content,$article_id,$clang_id);
+												$i++;
+											}
+										}
+										if (count($response['sub_articles'])) {
+											$response['info'] .= 'List of sub articles. Startarticle of category is ignored';
+										}
+										else {
+											$response['info'] .= ' No subarticles online.';
+											unset($response['sub_articles']);
+										}
+										// ! you can't use count($kids) directly, since check for startarticle inside loop
+									}
+
+									// always add own content
+									$this->addContent($response,$content,$article_id,$clang_id);
+									if (!$content) {
+										$response['help']['info'] = 'You may add "/content" to get the body of the article.';
+										// TODO: make convention to present links always the same
+										$output_clang = $clang_id + 1;
+										$response['help']['links'] = [];
+										$response['help']['links'][] = $this->articleLink($article_id,$clang_id,true);
+									}
+									else {
+										$response['warning'] = 'Content may contain links to web pages (no API links)!';
+									}
 								}
 								else {
-									$response['warning'] = 'Content may contain links to web pages (no API links)!';
+									$this->addHeader("HTTP/1.1 404 Not Found");
+									// no $article
+									// - $article_id and $clang_id already checked whether invalid
+									// - so we assume non existing article
+									// TODO: throw 404 with description
+									$response['error']['message'] = 'Resource for this request not found.';
+									// $response['help'] = 'See list of links for information how to start.';
+									$response['error']['help']['info'] = 'Start with /api/articles';
+									$response['error']['help']['links'][] = $this->apiLink('articles');
 								}
 							}
 							else {
-								$this->addHeader("HTTP/1.1 404 Not Found");
-								// no $article
-								// - $article_id and $clang_id already checked whether invalid
-								// - so we assume non existing article
-								// TODO: throw 404 with description
-								$response['error']['message'] = 'Resource not found.';
-								// $response['help'] = 'See list of links for information how to start.';
-								$response['error']['help']['info'] = 'Start with /api/articles';
+								// TODO: make sub function!
+								$this->addHeader("HTTP/1.1 400 Bad Request");
+								$response['error']['message'] = 'Invalid parameter for "articles".';
+								$response['error']['help']['info'] = 'Start with /api/ or see "links" for other examples';
+								$response['error']['help']['links'][] = $this->apiLink('');
 								$response['error']['help']['links'][] = $this->apiLink('articles');
+								$response['error']['help']['links'][] = $this->apiLink('help');
 							}
 						}
-						else {
-							// TODO: make sub function!
-							$this->addHeader("HTTP/1.1 400 Bad Request");
-							$response['error']['message'] = 'Invalid parameter for "articles".';
-							$response['error']['help']['info'] = 'Start with /api/ or see "links" for other examples';
-							$response['error']['help']['links'][] = $this->apiLink('');
-							$response['error']['help']['links'][] = $this->apiLink('articles');
-							$response['error']['help']['links'][] = $this->apiLink('help');
-						}
 					}
-				}
-				else if (!isset($request[0]) || $request[0] == '') {
-					$response['info'] = 'You can use the ids or links in the list of root "categories".';
-					$response['help']['info'] = 'Check out the help section too!';
-					$response['help']['links'][] = $this->apiLink('help');
-					$kids = $this->getRootCategories(true);
-					// we must assume clang id 0 here
-					$clang_id = 0;
-					if (count($kids)) {
-						foreach($kids as $k) {
-							$catResponse = $this->getSubLink($k->getId(),$k->getName());
-							$catResponse['articles'][] = $this->addArticle($k->getStartArticle(),true,$content);
-							$response['categories'][] = $catResponse;
+					else if ($request[0] === '' || $request[0] === 'categories') {
+
+						// set start cat id
+						$startCat = 0;
+						$clang_id = 0;
+						$kids = null;
+
+						if (isset($request[1])) {
+						 	$startCat = intval($request[1]);
+						}
+						if (isset($request[2])) {
+							$clang_id = intval($request[2]);
+						}
+
+						// ! we assume rqeuesting cat id == 0 means rootCategories!!
+						$cat = $this->getCategoryById($startCat,$clang_id);
+
+						if ($cat) {
+							$kids = $cat->getChildren(true);
+
+							$response['id'] = $cat->getId();
+							$response['name'] = $cat->getName();
+						}
+						else if (!$startCat) {
+							$kids = $this->getRootCategories(true,$clang_id);
+
+							$response['info'] = 'You can use the ids or links in the list of root "categories".';
+							$response['help']['info'] = 'Check out the help section too!';
+							$response['help']['links'][] = $this->apiLink('help');
+						}
+						else {
+							$response = $this->generateResourceNotFound($api);
+						}
+
+						$response['clang_id'] = $clang_id;
+
+						if ($kids && count($kids)) {
+							foreach($kids as $k) {
+								$catResponse = $this->getSubLink($k->getId(),$k->getName());
+
+								if ($showArticlesOfCategory) {
+									$catResponse['articles'] = $this->addAllArticlesOfCategory($k);
+								}
+								$response['categories'][] = $catResponse;
+							}
+						}
+						else if (!$startCat){
+							// IDEA: check if better to have an empty array "categories[]" to indicate there usually are some
+							$response['warning'] = 'Currently no root "categories" online.';
+						}
+
+						// my own content
+						// ??? sub function
+						// ??? must be loop for all in cat!!!!!!
+						if ($showArticlesOfCategory) {
+							if ($cat)  {
+								$response['articles'] = $this->addAllArticlesOfCategory($cat);
+							}
+							else if (!$startCat) {
+								$artRes = [];
+								$arts = $this->getRootArticles(true,$clang_id);
+								foreach($arts as $art) {
+									$artRes[] = $this->addArticle($art,$content); // TODO: wrong usage of $content
+								}
+								// - could insert if to prevent empty array
+								// ! can be empty array because *all* root articles could be offline (not depending on cat)
+								$response['articles'] = $artRes;
+							}
 						}
 					}
 					else {
-						// IDEA: check if better to have an empty array "categories[]" to indicate there usually are some
-						$response['warning'] = 'Currently no root "categories" online.';
+						$response = $this->generateSyntaxError($api);
+						// // articles/categories not found
+						// $this->addHeader('HTTP/1.1 400 Bad Request');
+						// $response['error']['message'] = 'Syntax error or unknown request component';
+						// $response['error']['help']['info'] = 'See links for entry point or help.';
+						// $response['error']['help']['links'][] = $this->apiLink('');
+						// $response['error']['help']['links'][] = $this->apiLink('help');
 					}
-				}
-				else {
-					// word articles not found
-					$this->addHeader('HTTP/1.1 400 Bad Request');
-					$response['error']['message'] = 'Syntax error or unknown request component';
-					$response['error']['help']['info'] = 'See links for entry point or help.';
-					$response['error']['help']['links'][] = $this->apiLink('');
-					$response['error']['help']['links'][] = $this->apiLink('help');
 				}
 			}
 
