@@ -350,10 +350,12 @@ class KwdJsonApiTestCase extends TestCase {
 		$this->assertEquals('Shuri Ryu Berlin_article',$art1->name,'should have article name');
 		$this->assertEquals(12,$art1->id);
 		$this->assertTrue($art1->is_start_article,'should set as "start article"');
+
+		$this->markTestIncomplete('must check "links" (wrong old format!!)');
 	}
 
 	// /api/categories/3/content
-	//  ! must be invalid
+	//  ! must be invalid because need '.../articles'
 	function testRequestCategoryWithContentBadRequest() {
 		$jao = new kwd_jsonapi_test();
 		$jao->setApiQueryString('api=categories/3/content');
@@ -377,28 +379,26 @@ class KwdJsonApiTestCase extends TestCase {
 		$this->assertInternalType('string',$art->body);
 	}
 
-	// !!! planning to remove keyword "content"
-	// /api/content
-	// ??? don't use ".../content" at all
-	// /api/categories/3/articles/content
 
-	// /api/categories/3/contentandmetainfo
+	// /api/categories/3/0/articles/content
+	// - must include ctypes
+	// how to check number?
 
-	// IDEA: /api/categories traverses *entire structure*
-	// ??? /api/categories/3/articles ??
+	// /api/articles
+	// ! disabled
 
-	// pubclic function testRequestSingleArticle
-	// - actually you could send metadata+content always
-	// /api/articles/12
-	// /api/articles/12/metadata
-	// /api/articles/12/content
-	// /api/articles/12/[data|slices]
+	// /api/categories/3/contentandmeta
+	// /api/categories/3/meta
+
+
 
 	// /api/help
 	// - should also suggest "/api/categories/0/content"
 
-	public function testSendResponse() {
-		// ??? how to test successful send
-		$this->markTestIncomplete();
-	}
+	// IDEA: /api/categories traverses *entire structure*
+
+	// public function testSendResponse() {
+	// 	// ??? how to test successful send
+	// 	$this->markTestIncomplete();
+	// }
 }

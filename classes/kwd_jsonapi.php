@@ -108,10 +108,19 @@ abstract class kwd_jsonapi {
 		return $this->headers = $headersArray;
 	}
 
+	// ??? better naming!
 	protected function getSubLink($id,$name = '') {
 		$entry['id'] = $id;
 		if ($name) $entry['name'] = $name;
 		$entry['link'] = $this->articleLink($id);
+		// return array
+		return $entry;
+	}
+
+	protected function getCategoryFields($id,$name = '',$clang_id = 0, $articles = false, $content = false) {
+		$entry['id'] = $id;
+		if ($name) $entry['name'] = $name;
+		$entry['link'] = $this->categoryLink($id,$clang_id,$articles,$content);
 		// return array
 		return $entry;
 	}
@@ -157,6 +166,10 @@ abstract class kwd_jsonapi {
 
 	protected function articleLink($article_id,$clang_id = 0,$showContent = false) {
 		return $this->apiLink('articles/'.$article_id.'/'.$clang_id.($showContent ? '/content' : ''));
+	}
+
+	protected function categoryLink($category_id, $clang_id = 0, $showArticles = false, $showContent = false) {
+		return $this->apiLink('categories/'.$category_id.'/'.$clang_id.($showArticles ? '/articles' : '').($showContent ? '/content' : ''));
 	}
 
 	//  --- API DATA GENERATION
@@ -453,7 +466,7 @@ abstract class kwd_jsonapi {
 
 							if ($kids && count($kids)) {
 								foreach($kids as $k) {
-									$catResponse = $this->getSubLink($k->getId(),$k->getName());
+									$catResponse = $this->getCategoryFields($k->getId(),$k->getName(),$clang_id,$showArticlesOfCategory,$content);
 
 									if ($showArticlesOfCategory) {
 										$catResponse['articles'] = $this->addAllArticlesOfCategory($k,$content);
