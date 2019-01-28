@@ -445,25 +445,33 @@ class KwdJsonApiTestCase extends TestCase {
 		$this->assertSame('<p>Demo Content for id=13, clang=0, ctype=2</p>',$art->body,'body should contain certain text');
 	}
 
-	// - must include ctypes
-	// how to check number?
 
-	// /api/articles
+	// /api/articles/3
 	// ! disabled
-
-
-
-	// TODO: "contents" instead of content
-
-	// ctypes
-	// /api/categories/3/articles/contents/3
-
-	// /api/categories/3/meta
+	function testArticlesDisabled() {
+		$json = $this->getResponseFromNew('/api/articles');
+		$this->assertTrue(isset($json->error),'must have "error" because disabled');
+		$json = $this->getResponseFromNew('/api/articles/3');
+		$this->assertTrue(isset($json->error),'must have "error" because disabled');
+	}
 
 	// /api/help
 	// - should also suggest "/api/categories/0/contents"
+	function testHelpSectionLinks() {
+		$json = $this->getResponseFromNew('/api/help///');
+		$this->assertTrue(isset($json->examples),'should have "help"');
+		$this->assertTrue(isset($json->info),'should have "help"');
+		self::markTestIncomplete('help links not tested');
+	}
 
-	// IDEA: /api/categories traverses *entire structure*
+	//
+	function testAllCategoryDataFields() {
+		self::markTestIncomplete('check createdate ...');
+	}
+	// /api/categories/3/meta
+
+	// ??? how to provide all ctypes
+	// ???: /api/categories traverses *entire structure*
 
 	// public function testSendResponse() {
 	// 	// ??? how to test successful send

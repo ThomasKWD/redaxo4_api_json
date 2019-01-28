@@ -2,16 +2,17 @@
 
 abstract class kwd_jsonapi {
 
-	protected const APIMARKER = 'api=';
-	protected const REQUEST_START = '/api/'; // to generate correct links to api resources in response
-	protected const SERVER_QUERY_STRING = 'QUERY_STRING';
-	protected const SERVER_REQUEST_SCHEME = 'REQUEST_SCHEME';
+	// ! const can not have acces modifier in PHP < 7.1
+	const APIMARKER = 'api=';
+	const REQUEST_START = '/api/'; // to generate correct links to api resources in response
+	const SERVER_QUERY_STRING = 'QUERY_STRING';
+	const SERVER_REQUEST_SCHEME = 'REQUEST_SCHEME';
 	// const SERVER_REQUEST_METHOD = 'REQUEST_METHOD';
 
-	protected const HELP = 'help';
-	protected const CATEGORIES = 'categories';
-	protected const ARTICLES = 'articles';
-	protected const CONTENTS = 'contents';
+	const HELP = 'help';
+	const CATEGORIES = 'categories';
+	const ARTICLES = 'articles';
+	const CONTENTS = 'contents';
 
 	protected $requestMethod = '';
 	protected $baseUrl = '';
@@ -122,12 +123,20 @@ abstract class kwd_jsonapi {
 		return $entry;
 	}
 
-	protected function getCategoryFields($id,$name = '',$clang_id = 0, $articles = false, $content = false) {
+	protected function getCategoryFields($cat, $clang_id = 0, $articles = false, $content = false) {
+		$id = $cat->getId();
 		$entry['id'] = $id;
-		if ($name) $entry['name'] = $name;
+		$entry['name'] = $cat->getName();
+		$entry['createdate'] = $cat->getCreateDate();
+		$entry['updatedate'] = $cat->getUpDateDate();
 		$entry['link'] = $this->categoryLink($id,$clang_id,$articles,$content);
 		// return array
 		return $entry;
+	}
+
+	protected function addArticleValue(&$result,$art,$field,$name) {
+		$val = $art->getValue($name);
+		if ($val !== null) $result[$field] = $val;
 	}
 
 	// get data from OOarticle object
@@ -137,6 +146,10 @@ abstract class kwd_jsonapi {
 		$res['id'] = $art->getId();
 		$res['name'] = $art->getName();
 		$res['is_start_article'] = $art->isStartArticle() ? true : false;
+		$res['createdate'] = $art->getCreateDate();
+		$res['updatedate'] = $art->getUpDateDate();
+		$this->addArticleValue($res,$art,'onlinefrom','art_online_from'); // ! changes $res; checks validity inside,
+		$this->addArticleValue($res,$art,'onlineto','art_online_to'); // ! changes $res; checks validity inside,
 		if ($content) $res['body'] = $this->getArticleContent($art->getId(), $art->getClang(), $ctype_id);
 
 		return $res;
@@ -181,9 +194,9 @@ abstract class kwd_jsonapi {
 		$this->addHeader('HTTP/1.1 400 Bad Request');
 		$response['request']= 'api/'.$apiString;
 		$response['error']['message'] = 'Syntax error or unknown request component';
-		$response['error']['help']['info'] = 'See links for entry point or help.';
-		$response['error']['help']['links'][] = $this->apiLink('');
-		$response['error']['help']['links'][] = $this->apiLink('help');
+		$response['error'][self::HELP]['info'] = 'See links for entry point or help.';
+		$response['error'][self::HELP]['links'][] = $this->apiLink('');
+		$response['error'][self::HELP]['links'][] = $this->apiLink(self::HELP);
 
 		return $response;
 	}
@@ -195,10 +208,10 @@ abstract class kwd_jsonapi {
 
 		$response['request'] = 'api/'.$apiString;
 		$response['error']['message'] = 'Resource for this request not found.';
-		$response['error']['help']['info'] = 'Start with /api or /api/'.self::CATEGORIES;
-		$response['error']['help']['links'][] = $this->apiLink('');
-		$response['error']['help']['links'][] = $this->apiLink(self::CATEGORIES);
-		$response['error']['help']['links'][] = $this->apiLink('help');
+		$response['error'][self::HELP]['info'] = 'Start with /api or /api/'.self::CATEGORIES;
+		$response['error'][self::HELP]['links'][] = $this->apiLink('');
+		$response['error'][self::HELP]['links'][] = $this->apiLink(self::CATEGORIES);
+		$response['error'][self::HELP]['links'][] = $this->apiLink(self::HELP);
 		return $response;
 	}
 
@@ -285,21 +298,41 @@ abstract class kwd_jsonapi {
 
 					if ($continue) {
 						//$response['debug']['explode'] = $request;
-						if ($request[0] == 'help') {
-							$response['info'] = 'The project consists of "articles". Each article has an id. You always have to add "/contents" to get article content. Articles representing a collection provide a field "list". This is the way to see the hiarchical structure. For examples see the "examples" entries here.';
+						if ($request[0] == self::HELP) {
+							$response['info'] = 'You will get hierarchical "categories". A selected category will contain a list of its immediate sub categories and data of its related "articles" when requested. Please note: only categories or articles defined as "online" are shown. See the "examples" section of this response!';
 							$response['examples'] = array(
-								array('info' => 'Entry point', 'link' => $this->apiLink('')),
-								array('info' => 'Alternative entry point because no id specified', 'link' => $this->apiLink(self::ARTICLES)),
-								array('info' => 'Certain article (default language)', 'link' => $this->apiLink(self::CATEGORIES.'/48'))
-								// array('info' => 'Certain article with certain language ', 'link' => $this->apiLink(self::ARTICLES/48/1')),
-								// array('info' => 'Certain article with content body', 'link' => $this->apiLink('articles/48/content')),
-								// array('info' => 'Certain article with content body and certain language', 'link' => $this->apiLink('articles/48/1/content')),
-								// array('info' => 'If the article contains sub articles it provides the bodies in the entries of "list".', 'link' => $this->apiLink('articles/3/content'))
+								array(
+									'info' => 'Entry point, currently also provides "root categories"', 'link' => $this->apiLink('')
+								),
+								array(
+									'info' => 'Root "categories"',
+									'link' => $this->apiLink(self::CATEGORIES)
+								),
+								// ! currently disabled
+								// array('info' => 'Alternative entry point because no id specified', 'link' => $this->apiLink(self::ARTICLES)),
+								array(
+									'info' => 'A category selected by its ID (always contains immediate sub categories).',
+									'link' => $this->apiLink(self::CATEGORIES.'/3')
+								),
+								array(
+									'info' => 'A category selected by its ID and its language (clang).',
+									'link' => $this->apiLink(self::CATEGORIES.'/3/1')
+								),
+								array(
+									'info' => 'A category with list of "articles" (also articles in sub categories).',
+									'link' => $this->apiLink(self::CATEGORIES.'/3/0/articles')
+								),
+								array(
+									'info' => 'A category with articles and those bodies (compiled "article content").',
+									'link' => $this->apiLink(self::CATEGORIES.'/3/0/articles/contents')
+								)
 							);
-							$response['external'] = array(
-								array('info' => 'Understand basic concept of categories and articles:', 'link' => 'https://redaxo.org')
-							);
+							$response['external']['info'] = 'Understand the basic concepts of "categories" and "articles":';
+							$response['external']['links'][] = 'https://redaxo.org';
+							$response['external']['links'][] = 'https://redaxo.org/doku/master/system';
+
 						}
+
 						// TODO: This must become output of single article
 						// IDEA: This automatically generates more detailed output
 						// ! currently disabled
@@ -315,7 +348,7 @@ abstract class kwd_jsonapi {
 								$this->addHeader('HTTP/1.1 404 Resource not found');
 								$response['error']['message'] = 'Listing all articles is not *yet* supported. You can specify an id or use the entry point "/api".';
 								$response['error']['links'][] = $this->apiLink('');
-								$response['error']['links'][] = $this->apiLink('help');
+								$response['error']['links'][] = $this->apiLink(self::HELP);
 							}
 							else {
 								$article_id = intval($request[1]);
@@ -401,11 +434,11 @@ abstract class kwd_jsonapi {
 										// ! commented out since altered
 										// $this->addContent($response,$content,$article_id,$clang_id);
 										if (!$content) {
-											$response['help']['info'] = 'You may add "/'.self::CONTENTS.'" to get the body of the article.';
+											$response[self::HELP]['info'] = 'You may add "/'.self::CONTENTS.'" to get the body of the article.';
 											// TODO: make convention to present links always the same
 											$output_clang = $clang_id + 1;
-											$response['help']['links'] = [];
-											$response['help']['links'][] = $this->articleLink($article_id,$clang_id,true);
+											$response[self::HELP]['links'] = [];
+											$response[self::HELP]['links'][] = $this->articleLink($article_id,$clang_id,true);
 										}
 										else {
 											$response['warning'] = 'Content may contain links to web pages (no API links)!';
@@ -418,19 +451,19 @@ abstract class kwd_jsonapi {
 										// - so we assume non existing article
 										// TODO: throw 404 with description
 										$response['error']['message'] = 'Resource for this request not found.';
-										// $response['help'] = 'See list of links for information how to start.';
-										$response['error']['help']['info'] = 'Start with /api/'.self::CATEGORIES;
-										$response['error']['help']['links'][] = $this->apiLink(self::ARTICLES);
+										// $response[self::HELP] = 'See list of links for information how to start.';
+										$response['error'][self::HELP]['info'] = 'Start with /api/'.self::CATEGORIES;
+										$response['error'][self::HELP]['links'][] = $this->apiLink(self::ARTICLES);
 									}
 								}
 								else {
 									// TODO: make sub function!
 									$this->addHeader("HTTP/1.1 400 Bad Request");
 									$response['error']['message'] = 'Invalid parameter for "articles".';
-									$response['error']['help']['info'] = 'Start with /api/ or see "links" for other examples';
-									$response['error']['help']['links'][] = $this->apiLink('');
-									$response['error']['help']['links'][] = $this->apiLink(self::ARTICLES);
-									$response['error']['help']['links'][] = $this->apiLink('help');
+									$response['error'][self::HELP]['info'] = 'Start with /api/ or see "links" for other examples';
+									$response['error'][self::HELP]['links'][] = $this->apiLink('');
+									$response['error'][self::HELP]['links'][] = $this->apiLink(self::ARTICLES);
+									$response['error'][self::HELP]['links'][] = $this->apiLink(self::HELP);
 								}
 							}
 						}
@@ -454,15 +487,21 @@ abstract class kwd_jsonapi {
 							if ($cat) {
 								$kids = $cat->getChildren(true);
 
-								$response['id'] = $cat->getId();
-								$response['name'] = $cat->getName();
+								// ??? yet another sub func: for cat data
+
+								$response = array_merge($response,$this->getCategoryFields($cat,$clang_id));
+
+								// $response['id'] = $cat->getId();
+								// $response['name'] = $cat->getName();
+								// $response['createdate'] = $cat->getCreateDate();
+								// $response['updatedate'] = $cat->getUpDateDate();
 							}
 							else if (!$startCat) {
 								$kids = $this->getRootCategories(true,$clang_id);
 
 								$response['info'] = 'You can use the ids or links in the list of root "categories".';
-								$response['help']['info'] = 'Check out the help section too!';
-								$response['help']['links'][] = $this->apiLink('help');
+								$response[self::HELP]['info'] = 'Check out the help section too!';
+								$response[self::HELP]['links'][] = $this->apiLink(self::HELP);
 							}
 							else {
 								$response = $this->generateResourceNotFound($api);
@@ -472,7 +511,7 @@ abstract class kwd_jsonapi {
 
 							if ($kids && count($kids)) {
 								foreach($kids as $k) {
-									$catResponse = $this->getCategoryFields($k->getId(),$k->getName(),$clang_id,$showArticlesOfCategory,$content);
+									$catResponse = $this->getCategoryFields($k,$clang_id,$showArticlesOfCategory,$content);
 
 									if ($showArticlesOfCategory) {
 										$catResponse[self::ARTICLES] = $this->addAllArticlesOfCategory($k,$content,$selectedCtype);
@@ -509,9 +548,9 @@ abstract class kwd_jsonapi {
 							// // articles/categories not found
 							// $this->addHeader('HTTP/1.1 400 Bad Request');
 							// $response['error']['message'] = 'Syntax error or unknown request component';
-							// $response['error']['help']['info'] = 'See links for entry point or help.';
-							// $response['error']['help']['links'][] = $this->apiLink('');
-							// $response['error']['help']['links'][] = $this->apiLink('help');
+							// $response['error'][self::HELP]['info'] = 'See links for entry point or help.';
+							// $response['error'][self::HELP]['links'][] = $this->apiLink('');
+							// $response['error'][self::HELP]['links'][] = $this->apiLink(self::HELP);
 						}
 					}
 				}
