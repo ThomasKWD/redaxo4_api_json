@@ -86,6 +86,7 @@ class mockRexCategory {
 	}
 }
 
+
 // need an extra derived class
 class kwd_jsonapi_test extends kwd_jsonapi {
 
@@ -143,6 +144,10 @@ class kwd_jsonapi_test extends kwd_jsonapi {
 }
 
 class KwdJsonApiTestCase extends TestCase {
+
+ 	function t() {
+		self::assertTrue(false,'test bool works');
+	}
 
 	private function getResponseFromNew($queryString,$returnString = false) {
 		$jao = new kwd_jsonapi_test();
@@ -412,6 +417,32 @@ class KwdJsonApiTestCase extends TestCase {
 		$this->assertInternalType('string',$art->body);
 		$this->assertSame('Moldt Events_article',$art->name,'name should contain certain text');
 		$this->assertSame('<p>Demo Content for id=13, clang=0, ctype=1</p>',$art->body,'body should contain certain text');
+
+		// self::t();
+	}
+
+	// /api/categories/articles/contents/2
+	function testRequestRootCategoriesWithContentAndCtype2() {
+		$json = $this->getResponseFromNew('/api/categories/articles/contents/2');
+
+		// sample: pick cat2, start article content
+		$this->assertTrue(isset($json->categories[1]->articles),'should have articles list');
+		$art = $json->categories[1]->articles[0];
+		$this->assertTrue(isset($art->body),'should have body');
+		$this->assertInternalType('string',$art->body);
+		$this->assertSame('<p>Demo Content for id=21, clang=0, ctype=2</p>',$art->body);
+	}
+
+	function testRequestCategory3WithContentAndCtype2() {
+		$json = $this->getResponseFromNew('/api/categories/3/0/articles/contents/2');
+		// sample: pick 3rd cat, start article content
+		$art = $json->categories[2]->articles[0];
+		$this->assertSame(13,$art->id,'should have proper id');
+		$this->assertSame('Moldt Events_article',$art->name,'should have proper id');
+		$this->assertTrue(isset($art->body),'should have body');
+		$this->assertInternalType('string',$art->body);
+		$this->assertSame('Moldt Events_article',$art->name,'name should contain certain text');
+		$this->assertSame('<p>Demo Content for id=13, clang=0, ctype=2</p>',$art->body,'body should contain certain text');
 	}
 
 	// - must include ctypes
