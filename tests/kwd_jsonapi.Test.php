@@ -35,6 +35,10 @@ class mockRexArticle {
 		return $this->_isStartArticle;
 	}
 
+	// to mock better (internal use, not in Redaxo!)
+	function _getContent() {
+		return $this->content;
+	}
 }
 
 class mockRexCategory {
@@ -109,6 +113,23 @@ class kwd_jsonapi_test extends kwd_jsonapi {
 
 	public function getArticleById($id, $clang = 0) {
 		return null;
+	}
+
+	public function getArticleContent($article_id,$clang_id = 0,$ctype = 1) {
+		$foundArt = null;
+		$cat = $this->getCategoryById($article_id,$clang_id);
+		if ($cat) {
+			$arts = $cat->getArticles();
+			if ($arts) foreach ($arts as $art) {
+				if ($art->getId() == $article_id) {
+					$foundArt = $art;
+					break;
+				}
+			}
+		}
+
+		if ($foundArt) return $foundArt->_getContent();
+		return "<p>Demo Content for id=$article_id, clang=$clang_id, ctype=$ctype</p>";
 	}
 
 	function __construct($method = 'GET', $scheme = 'http', $serverPath = 'localhost/tk/kwd_website', $query = 'api=') {
@@ -354,11 +375,11 @@ class KwdJsonApiTestCase extends TestCase {
 		$this->markTestIncomplete('must check "links" (wrong old format!!)');
 	}
 
-	// /api/categories/3/content
+	// /api/categories/3/contents
 	//  ! must be invalid because need '.../articles'
 	function testRequestCategoryWithContentBadRequest() {
 		$jao = new kwd_jsonapi_test();
-		$jao->setApiQueryString('api=categories/3/content');
+		$jao->setApiQueryString('api=categories/3/contents');
 		$response = $jao->buildResponse();
 		$json = json_decode($response);
 		$headers = $jao->getHeaders();
@@ -367,9 +388,9 @@ class KwdJsonApiTestCase extends TestCase {
 		$this->assertContains('HTTP/1.1 400 Bad Request',$headers);
 	}
 
-	// /api/categories/articles/content
+	// /api/categories/articles/contents
 	function testRequestRootCategoriesWithContent() {
-		$json = $this->getResponseFromNew('/api/categories/articles/content');
+		$json = $this->getResponseFromNew('/api/categories/articles/contents');
 
 		// sample: pick cat2, start article content
 		$art = $json->categories[1]->articles[0];
@@ -379,21 +400,37 @@ class KwdJsonApiTestCase extends TestCase {
 		$this->assertInternalType('string',$art->body);
 	}
 
+	// /api/categories/3/0/articles/contents
+	function testRequestCategory3WithContent() {
+		$json = $this->getResponseFromNew('/api/categories/3/0/articles/contents');
 
-	// /api/categories/3/0/articles/content
+		// sample: pick 3rd cat, start article content
+		$art = $json->categories[2]->articles[0];
+		// $this->assertSame(21,$art->id,'should have proper id');
+		// $this->assertSame('News_article',$art->name,'should have proper id');
+		$this->assertTrue(isset($art->body),'should have body');
+		$this->assertInternalType('string',$art->body);
+		$this->assertSame('Moldt Events_article',$art->name,'name should contain certain text');
+		$this->assertSame('<p>Demo Content for id=13, clang=0, ctype=1</p>',$art->body,'body should contain certain text');
+	}
+
 	// - must include ctypes
 	// how to check number?
 
 	// /api/articles
 	// ! disabled
 
-	// /api/categories/3/contentandmeta
+
+
+	// TODO: "contents" instead of content
+
+	// ctypes
+	// /api/categories/3/articles/contents/3
+
 	// /api/categories/3/meta
 
-
-
 	// /api/help
-	// - should also suggest "/api/categories/0/content"
+	// - should also suggest "/api/categories/0/contents"
 
 	// IDEA: /api/categories traverses *entire structure*
 

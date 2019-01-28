@@ -18,7 +18,7 @@ abstract class kwd_jsonapi {
 	abstract protected function getCategoryById($id, $clang = 0);
 	abstract protected function getRootArticles($ignore_offlines = false,$clang = 0);
 	abstract protected function getArticleById($id,$clang = 0);
-	abstract protected function generateArticle();
+	abstract protected function getArticleContent($article_id,$clang_id = 0,$ctype = 1);
 
 	function __construct($requestMethod = 'get', $requestScheme = 'http', $queryString = '', $serverPath) {
 		$this->init($requestMethod, $requestScheme, $queryString, $serverPath);
@@ -151,10 +151,8 @@ abstract class kwd_jsonapi {
 	protected function addContent($article_id,$clang_id,$demandContent = true) {
 		$ret = '';
 		if ($demandContent) {
-			$articleContent = $this->generateArticle(); // new rex_article();
-			$articleContent->setClang($clang_id); // lt. Kommentar, openmind, 01-feb-2007
-			$articleContent->setArticleId($article_id);
-			$ret = $articleContent->getArticle(1); // only ctype 1
+			// IDEA: let user select ctype!
+			$ret = $this->getArticleContent($article_id, $clang_id, 1);
 		}
 		return $ret;
 	}
@@ -256,7 +254,7 @@ abstract class kwd_jsonapi {
 					$continue = true;
 					$showArticlesOfCategory = false;
 
-					if ($request[count($request) - 1] === 'content') {
+					if ($request[count($request) - 1] === 'contents') {
 						$content = true;
 						array_pop($request);
 					}
@@ -331,6 +329,7 @@ abstract class kwd_jsonapi {
 									else $clang_id = 0;
 
 									$article = $this->getArticleById($article_id,$clang_id);
+
 
 									if ($article) {
 										// TODO: check for null!!!, clang_id can be wrong or invalid!, $article_id can be wrong

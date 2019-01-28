@@ -21,8 +21,11 @@ class kwd_jsonapi_rex4 extends kwd_jsonapi {
 		return OOArticle::getArticleById($id,$clang);
 	}
 
-	protected function generateArticle() {
-		return new rex_article();
+	protected function getArticleContent($article_id,$clang_id = 0,$ctype = 1) {
+		$articleContent = new rex_article();
+		$articleContent->setClang($clang_id);
+		$articleContent->setArticleId($article_id);
+		return $articleContent->getArticle($ctype);
 	}
 
 	// ??? how works with unset $serverQueryString
