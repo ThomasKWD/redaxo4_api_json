@@ -3,9 +3,27 @@ use PHPUnit\Framework\TestCase;
 
 require_once('../classes/kwd_jsonapi.php');
 
+class mockRexEntity {
 
-class mockRexArticle {
-	private $id;
+	protected $id;
+
+	function getId() {
+		return $this->id;
+	}
+
+	public function getCreateDate() {
+		return strtotime('3 Oct 2018 2:30');
+	}
+
+	public function getUpDateDate() {
+		return strtotime('20 Dec 2018 2:30');
+	}
+}
+
+
+
+class mockRexArticle extends mockRexEntity {
+	protected $id;
 	private $name;
 	private $_isStartArticle;
 	private $content;
@@ -31,6 +49,10 @@ class mockRexArticle {
 		return $this->clang_id;
 	}
 
+	function getValue($value) {
+		return '';
+	}
+
 	function isStartArticle() {
 		return $this->_isStartArticle;
 	}
@@ -41,9 +63,9 @@ class mockRexArticle {
 	}
 }
 
-class mockRexCategory {
+class mockRexCategory extends mockRexEntity {
 
-	private $id;
+	protected $id;
 	private $name;
 	private $articles = [];
 	private $clang_id;
@@ -85,7 +107,6 @@ class mockRexCategory {
 		return $this->articles;
 	}
 }
-
 
 // need an extra derived class
 class kwd_jsonapi_test extends kwd_jsonapi {
