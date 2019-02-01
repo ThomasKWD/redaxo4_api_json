@@ -13,6 +13,7 @@ abstract class kwd_jsonapi {
 	const CATEGORIES = 'categories';
 	const ARTICLES = 'articles';
 	const CONTENTS = 'contents';
+	const METAINFOS = 'metainfos';
 
 	protected $requestMethod = '';
 	protected $baseUrl = '';
@@ -125,31 +126,102 @@ abstract class kwd_jsonapi {
 
 	protected function getCategoryFields($cat, $clang_id = 0, $articles = false, $content = false) {
 		$id = $cat->getId();
-		$entry['id'] = $id;
-		$entry['name'] = $cat->getName();
-		$entry['createdate'] = $cat->getCreateDate();
-		$entry['updatedate'] = $cat->getUpDateDate();
+		// $entry['id'] = $id;
+		// $entry['name'] = $cat->getName();
+		// $entry['createdate'] = $cat->getCreateDate();
+		// $entry['updatedate'] = $cat->getUpDateDate();
+
+		$entry = $this->getMetaInfos($cat,null);
+
 		$entry['link'] = $this->categoryLink($id,$clang_id,$articles,$content);
 		// return array
 		return $entry;
 	}
 
-	protected function addArticleValue(&$result,$art,$field,$name) {
-		$val = $art->getValue($name);
-		if ($val !== null) $result[$field] = $val;
+	// protected function addArticleValue(&$result,$art,$field,$name) {
+	// 	$val = $art->getValue($name);
+	// 	if ($val !== null) $result[$field] = $val;
+	// }
+
+	/** returns true if a string starts with certain string
+	*	@return boolean true: found, else false
+	*/
+	protected function startsWith($haystack, $needle)
+	{
+	     $length = strlen($needle);
+	     return (substr($haystack, 0, $length) === $needle);
+	}
+
+	/** ! returns all fields available, not only meta info
+	*	- fortunately this method is equal tin redaxo versions 4|5
+	*	??? should filter depending on being article|category
+	*	??? redaxo access should go into avstract wrapper like 'getCategoryById()'
+	*	@return array associateive array of found meta data, first element contains length of array - 1
+	*/
+	protected function getMetaInfos($cat,$art) {
+
+		$res = array();
+
+		if ($cat) $artOrCat = $cat;
+		else if ($art) $artOrCat = $art;
+
+		if ($artOrCat) {
+			if (count($artOrCat->getClassVars())) {
+				foreach($artOrCat->getClassVars() as $m) {
+					$flagMetaInfo = false;
+					$field = $m;
+					if ($cat) {
+						// ! order of checks matters
+						if ($m == 'name') $field = '';
+						if ($this->startsWith($m,'art_')) $field = '';
+						if ($m == 'catname') $field = 'name';
+						else if ($this->startsWith($m,'cat_')) $flagMetaInfo = true;
+						else if ($this->startsWith($m,'cat')) $field = substr($m,3);
+					}
+					if ($art) {
+						if ($m == 'catprior') $field = '';
+						else if ($this->startsWith($m,'cat_')) $field = '';
+						else if ($this->startsWith($m,'art_')) $flagMetaInfo = true;
+					}
+					// remove this line when offlines possible:
+					if ($m === 'status') $field = '';
+
+					if ($field) {
+						$temp = $artOrCat->getValue($m);
+						if (is_numeric($temp)) $temp = floatval($temp);
+						// if ($temp == intval($temp)) $temp = intval($temp);
+						// else if (is_float($temp)) $temp = floatval($temp);
+						// later, if offline possible:
+						// if ($m === 'status') $temp = $temp === '1' ? $temp = 'online' : 'offline';
+						if ($flagMetaInfo) $res['metainfos'][$field] = $temp;
+						else $res[$field] = $temp;
+					}
+
+				}
+			}
+			// ??? consider write error:
+			else $res['info'] = '[no metadata]';
+		}
+		else {
+			$res = [];
+		}
+
+		return $res;
 	}
 
 	// get data from OOarticle object
 	protected function addArticle($art, $content = false, $ctype_id) {
-		$res = array();
 		// order matters:
-		$res['id'] = $art->getId();
-		$res['name'] = $art->getName();
-		$res['is_start_article'] = $art->isStartArticle() ? true : false;
-		$res['createdate'] = $art->getCreateDate();
-		$res['updatedate'] = $art->getUpDateDate();
-		$this->addArticleValue($res,$art,'onlinefrom','art_online_from'); // ! changes $res; checks validity inside,
-		$this->addArticleValue($res,$art,'onlineto','art_online_to'); // ! changes $res; checks validity inside,
+		// $res['id'] = $art->getId();
+		// $res['name'] = $art->getName();
+		// $res['is_start_article'] = $art->isStartArticle() ? true : false;
+		// $res['createdate'] = $art->getCreateDate();
+		// $res['updatedate'] = $art->getUpDateDate();
+		// $this->addArticleValue($res,$art,'onlinefrom','art_online_from'); // ! changes $res; checks validity inside,
+		// $this->addArticleValue($res,$art,'onlineto','art_online_to'); // ! changes $res; checks validity inside,
+
+		$res = $this->getMetaInfos(null,$art);
+
 		if ($content) $res['body'] = $this->getArticleContent($art->getId(), $art->getClang(), $ctype_id);
 
 		return $res;
@@ -373,7 +445,7 @@ abstract class kwd_jsonapi {
 										// TODO: check for null!!!, clang_id can be wrong or invalid!, $article_id can be wrong
 										$response['id'] =  $article_id;
 										$response['category_id'] = $article->getValue('category_id');
-										$response['clang_id'] =  $clang_id; // ! language id counting from 1
+										$response['clang'] =  $clang_id; // ! language id counting from 1
 										$response['name'] = $article->getValue('name');
 										$response['info'] = ''; // now we can concat text
 
@@ -507,7 +579,7 @@ abstract class kwd_jsonapi {
 								$response = $this->generateResourceNotFound($api);
 							}
 
-							$response['clang_id'] = $clang_id;
+							$response['clang'] = $clang_id;
 
 							if ($kids && count($kids)) {
 								foreach($kids as $k) {
