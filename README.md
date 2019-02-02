@@ -1,4 +1,4 @@
-# api_json
+# redaxo4_api_json
 
 ## Abstract
 
@@ -17,13 +17,15 @@
 The addon uses 3 fields of the PHP superglobal `$_SERVER` which must be existent and have the proper content.
 Under a default apache + php configuration these should not be a problem - but you should know it:
 
-* `$_SERVER['REQUEST_METHOD']` containing the http method e.g. 'GET', case insensitive -- this var is used indirectly by calling the Redaxo function "rex_request_method()"
-* `$_SERVER['REQUEST_SCHEME']` containing the protocol ("http" or "https")
-* `$_SERVER['QUERY_STRING']` containing the query part of the URI -- everything from the "?" _after rewrite rule transformation_ (e. g. "api=categories/4")
+`$_SERVER['REQUEST_METHOD']` containing the http method e.g. 'GET', case insensitive -- this var is used indirectly by calling the Redaxo function "rex_request_method()"
 
-It also relies on a field of the global var `$REX` of Redaxo:
+`$_SERVER['REQUEST_SCHEME']` containing the protocol ("http" or "https")
 
-* `$REX['SERVER']` containing the complete domain and path of the project without leading protocol.
+`$_SERVER['QUERY_STRING']` containing the query part of the URI -- everything from the "?" _after rewrite rule transformation_ (e. g. "api=categories/4")
+
+It also relies on a field of the global var of Redaxo:
+
+`$REX['SERVER']` containing the complete domain and path of the project without leading protocol.
 
 ## Installation
 
@@ -59,13 +61,11 @@ Always returns a body in JSON. On HTTP erros the body contains explanations.
 
 Assuming public content header `Access-Control-Allow-Origin: *` is always sent.
 
-The structure of JSON is similar to [Redaxo](https://redaxo.org) structure.
+The JSON resembles the category structure of [Redaxo](https://redaxo.org). But it can only return 1 category level and its immediate sub categories in 1 response.
 
 Only articles and categories with status "online" are returned.
 
 Currently _all_ "metainfo" data available is included.
-
-"createdate" and "updatedate" contain UNIX time stamps.
 
 Some fields are redundant, but provide better understanding esp. when a client parses categories and articles separately.
 

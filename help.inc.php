@@ -13,7 +13,7 @@
 
 <p>Keine Einstellungsmöglichkeiten.</p>
 
-<p>Detail-Infos unter: <a href="https://github.com/ThomasKWD/api_json">github.com/ThomasKWD/api_json</a></p>
+<p>Detail-Infos unter: <a href="https://github.com/ThomasKWD/redaxo4_api_json">github.com/ThomasKWD/api_json</a></p>
 
 
 
