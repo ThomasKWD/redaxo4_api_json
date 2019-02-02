@@ -63,88 +63,210 @@ The structure of JSON is similar to [Redaxo](https://redaxo.org) structure.
 
 Only articles and categories with status "online" are returned.
 
-Currently no "metainfo" data is included except titles and "online from" and "online to" of articles.
+Currently _all_ "metainfo" data available is included.
 
 "createdate" and "updatedate" contain UNIX time stamps.
+
+Some fields are redundant, but provide better understanding esp. when a client parses categories and articles separately.
 
 Example response made from "https://www.kuehne-webdienste.de/api/categories/3/0/articles":
 
 ```
 {
-	request: "api/categories/3/0/articles",
-	id: "3",
-	name: "Referenzen",
-	createdate: "1280159918",
-	updatedate: "1544285487",
-	link: "https://www.kuehne-webdienste.de/api/categories/3/0",
-	clang_id: 0,
-	categories: [
-		{
-			id: "12",
-			name: "Shuri Ryu Berlin",
-			createdate: "1404049179",
-			updatedate: "1543838561",
-			link: "https://www.kuehne-webdienste.de/api/categories/12/0/articles",
-			articles: [
-				{
-					id: "12",
-					name: "Shuri Ryu Berlin",
-					is_start_article: true,
-					createdate: "1404049179",
-					updatedate: "1543838561",
-					onlinefrom: "",
-					onlineto: "1570053600",
-				}
-			]
-		},
-		{
-			id: "7",
-			name: "Tangará Brasil",
-			createdate: "1280159902",
-			updatedate: "1486048701",
-			link: "https://www.kuehne-webdienste.de/api/categories/7/0/articles",
-			articles: [
-				{
-					id: "7",
-					name: "Tangará Brasil",
-					is_start_article: true,
-					createdate: "1280159902",
-					updatedate: "1486048701",
-					onlinefrom: "",
-					onlineto: ""
-				}
-			]
-		},
-		{
-			id: "13",
-			name: "Moldt Events",
-			createdate: "1404049185",
-			updatedate: "1410461900",
-			link: "https://www.kuehne-webdienste.de/api/categories/13/0/articles",
-			articles: [
-				{
-					id: "13",
-					name: "Moldt Events",
-					is_start_article: true,
-					createdate: "1404049185",
-					updatedate: "1410461900",
-					onlinefrom: "",
-					onlineto: ""
-				}
-			]
-		}
-		],
-		articles: [
-			{
-				id: "3",
-				name: "Referenzen, Auswahl",
-				is_start_article: true,
-				createdate: "1280159918",
-				updatedate: "1544285487",
-				onlinefrom: "",
-				onlineto: ""
-			}
-	]
+  request: "api/categories/3/0/articles",
+  id: 3,
+  clang: 0,
+  pid: 3,
+  re_id: 0,
+  name: "Referenzen",
+  prior: 1,
+  attributes: "",
+  startpage: 1,
+  path: "|",
+  createdate: 1280159918,
+  updatedate: 1544285487,
+  template_id: 1,
+  createuser: "Thomas",
+  updateuser: "Thomas",
+  revision: 0,
+  link: "https://www.kuehne-webdienste.de/api/categories/3/0",
+  categories: [
+    {
+      id: 12,
+      clang: 0,
+      pid: 12,
+      re_id: 3,
+      name: "Shuri Ryu Berlin",
+      prior: 1,
+      attributes: "",
+      startpage: 1,
+      path: "|3|",
+      createdate: 1404049179,
+      updatedate: 1543838561,
+      template_id: 13,
+      createuser: "Thomas",
+      updateuser: "Thomas",
+      revision: 0,
+      link: "https://www.kuehne-webdienste.de/api/categories/12/0/articles",
+      articles: [
+        {
+          id: 12,
+          clang: 0,
+          pid: 12,
+          re_id: 12,
+          name: "Shuri Ryu Berlin",
+          catname: "Shuri Ryu Berlin",
+          attributes: "",
+          startpage: 1,
+          prior: 1,
+          path: "|3|",
+          createdate: 1404049179,
+          updatedate: 1543838561,
+          template_id: 13,
+          createuser: "Thomas",
+          updateuser: "Thomas",
+          revision: 0,
+          metainfos: {
+            art_online_from: "",
+            art_online_to: "",
+            art_description: "",
+            art_keywords: "",
+            art_file: "",
+            art_teaser: "",
+            art_type_id: "",
+            art_showtitle: "normal"
+          }
+        }
+      ]
+    },
+    {
+      id: 7,
+      clang: 0,
+      pid: 7,
+      re_id: 3,
+      name: "Tangará Brasil",
+      prior: 1,
+      attributes: "",
+      startpage: 1,
+      path: "|3|",
+      createdate: 1280159902,
+      updatedate: 1486048701,
+      template_id: 13,
+      createuser: "Thomas",
+      updateuser: "Thomas",
+      revision: 0,
+      link: "https://www.kuehne-webdienste.de/api/categories/7/0/articles",
+      articles: [
+        {
+          id: 7,
+          clang: 0,
+          pid: 7,
+          re_id: 7,
+          name: "Tangará Brasil",
+          catname: "Tangará Brasil",
+          attributes: "",
+          startpage: 1,
+          prior: 1,
+          path: "|3|",
+          createdate: 1280159902,
+          updatedate: 1486048701,
+          template_id: 13,
+          createuser: "Thomas",
+          updateuser: "Thomas",
+          revision: 0,
+          metainfos: {
+            art_online_from: "",
+            art_online_to: "",
+            art_description: "",
+            art_keywords: "",
+            art_file: "",
+            art_teaser: "",
+            art_type_id: "",
+            art_showtitle: "normal"
+          }
+        }
+      ]
+    },
+    {
+      id: 13,
+      clang: 0,
+      pid: 13,
+      re_id: 3,
+      name: "Moldt Events",
+      prior: 1,
+      attributes: "",
+      startpage: 1,
+      path: "|3|",
+      createdate: 1404049185,
+      updatedate: 1410461900,
+      template_id: 13,
+      createuser: "Thomas",
+      updateuser: "Thomas",
+      revision: 0,
+      link: "https://www.kuehne-webdienste.de/api/categories/13/0/articles",
+      articles: [
+        {
+          id: 13,
+          clang: 0,
+          pid: 13,
+          re_id: 13,
+          name: "Moldt Events",
+          catname: "Moldt Events",
+          attributes: "",
+          startpage: 1,
+          prior: 1,
+          path: "|3|",
+          createdate: 1404049185,
+          updatedate: 1410461900,
+          template_id: 13,
+          createuser: "Thomas",
+          updateuser: "Thomas",
+          revision: 0,
+          metainfos: {
+            art_online_from: "",
+            art_online_to: "",
+            art_description: "",
+            art_keywords: "",
+            art_file: "",
+            art_teaser: "",
+            art_type_id: "",
+            art_showtitle: "normal"
+          }
+        }
+      ]
+    }
+  ],
+  articles: [
+    {
+      id: 3,
+      clang: 0,
+      pid: 3,
+      re_id: 3,
+      name: "Referenzen, Auswahl",
+      catname: "Referenzen",
+      attributes: "",
+      startpage: 1,
+      prior: 1,
+      path: "|",
+      createdate: 1280159918,
+      updatedate: 1544285487,
+      template_id: 1,
+      createuser: "Thomas",
+      updateuser: "Thomas",
+      revision: 0,
+      metainfos: {
+        art_online_from: "",
+        art_online_to: "",
+        art_description: "",
+        art_keywords: "",
+        art_file: "",
+        art_teaser: "",
+        art_type_id: "",
+        art_showtitle: "normal"
+      }
+    }
+  ]
 }
 ```
+
 Note: This example has been copied from an formatter for better readability. The actual response **has** quoted field names and escaped slashes.
