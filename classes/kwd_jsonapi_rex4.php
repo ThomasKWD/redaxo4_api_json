@@ -34,9 +34,9 @@ class kwd_jsonapi_rex4 extends kwd_jsonapi {
 
 		parent::__construct(
 			rex_request_method(), // must pass lower case string
-			rex_server(self::SERVER_REQUEST_SCHEME,'string','http'),
-			$REX['SERVER'],
-			rex_server($serverQueryString ? $serverQueryString  : self::SERVER_QUERY_STRING)
+			rex_server(self::SERVER_REQUEST_SCHEME,'string','http'), // request_scheme
+			$REX['SERVER'], // project path
+			rex_server($serverQueryString ? $serverQueryString  : self::SERVER_QUERY_STRING) // query string of request url
 		);
 	}
 }

@@ -27,8 +27,8 @@ abstract class kwd_jsonapi {
 	abstract protected function getArticleById($id,$clang = 0);
 	abstract protected function getArticleContent($article_id,$clang_id = 0,$ctype = 1);
 
-	function __construct($requestMethod = 'get', $requestScheme = 'http', $queryString = '', $serverPath) {
-		$this->init($requestMethod, $requestScheme, $queryString, $serverPath);
+	function __construct($requestMethod = 'get', $requestScheme = 'http', $serverPath = '/', $queryString = '') {
+		$this->init($requestMethod, $requestScheme, $serverPath, $queryString);
 	}
 
 	/** adds header to list
@@ -46,20 +46,9 @@ abstract class kwd_jsonapi {
 	* - helper function, does NOT modify state of object
 	*/
 	protected function buildBaseUrl($requestScheme,$serverPath) {
-
 		// rex_server is assumed existent in redaxo 4 and 5
-		// TODO: but you should extract it, it could be change in redaxo 6
-		$baseUrl = $requestScheme .'://'.$serverPath;
-
-		// check for trailing '/'
-		// - for the case we have *1 or more* trailing slashes
-		// ! endless loop if substr not working correctly
-		while (substr($baseUrl,-1) == '/') {
-			$baseUrl = substr($baseUrl,0,strlen($baseUrl) - 1);
-		}
-		$baseUrl  .= self::REQUEST_START;
-
-		return $baseUrl;
+		// ! php passes protocol without the ://
+		return strtolower(trim($requestScheme)) .'://'.strtolower(trim($serverPath," /\t\r\n\0\x0B")); // remove multiple slashes as well
 	}
 
 	/** check valid requestMethod
@@ -174,6 +163,7 @@ abstract class kwd_jsonapi {
 						// ! order of checks matters
 						if ($m == 'name') $field = '';
 						if ($this->startsWith($m,'art_')) $field = '';
+						// ??? problem when requesting an article via category
 						if ($m == 'catname') $field = 'name';
 						else if ($this->startsWith($m,'cat_')) $flagMetaInfo = true;
 						else if ($this->startsWith($m,'cat')) $field = substr($m,3);
@@ -237,9 +227,10 @@ abstract class kwd_jsonapi {
 		return $ret;
 	}
 
-	/// ??? make var for server name
+	// ??? - prepare for different link building (sub functions)
+	// ??? ! must be able to build links for "rewrite off" AND "want param url request style"
 	protected function apiLink($queryString) {
-		return $this->baseUrl .$queryString;
+		return $this->baseUrl . self::REQUEST_START .$queryString;
 	}
 
 	protected function articleLink($article_id,$clang_id = 0,$showContent = false) {

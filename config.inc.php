@@ -86,8 +86,8 @@ if ($REX['REDAXO']) {
 	require $REX['INCLUDE_PATH'].'/addons/'.$mypage.'/classes/kwd_jsonapi.php';
 	require $REX['INCLUDE_PATH'].'/addons/'.$mypage.'/classes/kwd_jsonapi_rex4.php';
 
-	if (!$REX['REDAXO']) rex_register_extension('OUTPUT_FILTER', 'kwd_startJsonApi_output');
-	// if (!$REX['REDAXO']) rex_register_extension('OUTPUT_FILTER', 'kwd_startJsonApi_fast');
+	// if (!$REX['REDAXO']) rex_register_extension('OUTPUT_FILTER', 'kwd_startJsonApi_output');
+	if (!$REX['REDAXO']) rex_register_extension('ADDONS_INCLUDED', 'kwd_startJsonApi_fast');
 
 	// faster but can not use OUTPUT_FILTER:
 	// - all other must be included because we request article contents which will need e.g. a class from the "extensions" addon
