@@ -34,6 +34,7 @@ class mockRexEntity {
 		return [
 			'id',
 			'name',
+			're_id',
 			'catname',
 			'clang',
 			'createdate',
@@ -49,6 +50,7 @@ class mockRexEntity {
 	function getValue($value) {
 
 		if ($value == 'id') return $this->id;
+		if ($value == 're_id') return $this->id;
 		if ($value == 'name') return $this->name;
 		if ($value == 'catname') return $this->name;
 		if ($value == 'clang') return $this->clang_id;
@@ -63,13 +65,15 @@ class mockRexEntity {
 class mockRexArticle extends mockRexEntity {
 	private $_isStartArticle;
 	private $content;
+	protected $category_id;
 
-	function __construct($id, $name = '', $clang_id = 0, $isStartArticle = false, $content = '') {
+	function __construct($id, $name = '', $clang_id = 0, $catid, $isStartArticle = false, $content = '') {
 		$this->id = $id;
 		$this->name = $name;
 		$this->_isStartArticle = $isStartArticle ? true : false;
 		$this->content = $content;
 		$this->clang_id = $clang_id;
+		$this->category_id = $catid;
 	}
 
 	function isStartArticle() {
@@ -78,6 +82,7 @@ class mockRexArticle extends mockRexEntity {
 
 	function getValue($key) {
 		if ($key == 'startpage') return $this->_isStartArticle ? 1 : 0; // stored bool but redaxo uses int
+		if ($key == 're_id') return $this->category_id; // stored bool but redaxo uses int
 		else return parent::getValue($key);
 	}
 
@@ -91,15 +96,19 @@ class mockRexCategory extends mockRexEntity {
 
 	private $articles = [];
 
-	protected function _addArticle($id,$name,$clang_id,$isStartArticle,$content) {
-		return new mockRexArticle($id,$name,$clang_id,$isStartArticle,$content);
+	protected function _addArticle($id,$name,$clang_id,$catid,$isStartArticle,$content) {
+		return new mockRexArticle($id,$name,$clang_id,$catid,$isStartArticle,$content);
 	}
 
 	function __construct($id,$name,$clang_id) {
 		$this->id = $id;
 		$this->name = $name;
 		$this->clang_id = $clang_id;
-		$this->articles[] = $this->_addArticle($id,$name.'_article',$clang_id,true,'<p>voll der Start-Artikel Content</p>');
+		$this->articles[] = $this->_addArticle($id,$name.'_article',$clang_id,$id,true,'<p>voll der Start-Artikel Content</p>');
+		// make article 48 if we are in cat 3 which must not be set startarticle
+		if ($id==3) {
+			$this->articles[] = $this->_addArticle(48,'Android App_article',0,$id,false,'<p>Body of Android App article (id48)</p>');
+		}
 	}
 
 	public function getId() {
@@ -164,6 +173,9 @@ class kwd_jsonapi_test extends kwd_jsonapi {
 	}
 
 	public function getArticleById($id, $clang = 0) {
+		if ($id == 48) return new mockRexArticle($id,'Android App',$clang,3,false,'<p>Body of Android News Article</p>');
+		if ($id == 3) return new mockRexArticle($id,'Referenzen, Auswahl',$clang,3,true,'<b>body of referenzen3</b>');
+
 		return null;
 	}
 
@@ -401,15 +413,15 @@ class KwdJsonApiTestCase extends TestCase {
 	function testRequestUnknownCategory() {
 		$json = $this->getResponseFromNew('/api/categories/1234');
 		$this->assertTrue(isset($json->error),'should have error element');
-		$this->assertSame('Resource for this request not found.',$json->error->message,'should have "not found" message');
+		$this->assertNotFalse(strstr($json->error->message,'Resource for this request not found.'),'should have "not found" message');
 	}
 
 	// /api/categories/3/articles
 	function testRequestCategoryWithSubCategoriesAndSubArticles() {
 		$response = $this->getResponseFromNew('/api/categories/3/articles');
 
-		$this->assertEquals(1,count($response->articles),'field "articles" of catmust contain 1 element');
-
+		// ! in the case of cat 3 wie mocked 2 articles
+		$this->assertEquals(2,count($response->articles),'field "articles" of cat 3 must contain 2 elements');
 		$cat1 = $response->categories[0];
 		$this->assertSame('Shuri Ryu Berlin',$cat1->name,'should have a subcat with name');
 
@@ -494,20 +506,21 @@ class KwdJsonApiTestCase extends TestCase {
 		$this->assertTrue(isset($json->error),'must have "error" because cannot list ALL articles');
 	}
 
-	// /api/articles/3
-	function testRequestSingleArticleWhenStartArticle() {
-		$json = $this->getResponseFromNew('/api/articles/3');
-		$this->assertFalse(isset($json->error),'must NOT have "error" because  valid');
-	}
-
 	// /api/articles/48/contents
 	// - this cannot work with /api/categories/... because it is not a start article of a cat
 	function testRequestSingleArticle() {
 		$json = $this->getResponseFromNew('/api/articles/48/contents');
-		// $this->assertFalse($json->articles,'must not have sub articles');
-		// $this->assertSame(48,$json->id,'must have id unequal to its cat');
-		// $this->assertSame(3,$json->catid,'must have catid; unequal to its cat');
+	 	$this->assertFalse(isset($json->articles),'must not have sub articles');
+		$this->assertSame(48,$json->id,'must have id unequal to its cat');
+		$this->assertSame(3,$json->re_id,'must have re_id; unequal to its cat');
+		$this->assertSame('Android App',$json->catname,'must have catname');
 		$this->markTestIncomplete('see commented stuff');
+	}
+
+	// /api/articles/3
+	function testRequestSingleArticleWhenStartArticle() {
+		$json = $this->getResponseFromNew('/api/articles/3');
+		$this->assertFalse(isset($json->error),'must NOT have "error" because  valid');
 	}
 
 	// /api/categories/48/articles/
