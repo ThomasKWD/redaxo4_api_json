@@ -51,7 +51,11 @@ Just try your Redaxo project URI with `/api`. It provides an entry point and sug
 
 `yourdomain.tld/api/categories/3/articles` returns category with ID == 3 and all articles in it and in its sub categories.
 
-`yourdomain.tld/api/categories/3/articles/content/2` returns "article content" of ctype 2 of all articles found.
+`yourdomain.tld/api/categories/3/articles/contents/2` returns "article content" of ctype 2 of all articles found.
+
+`yourdomain.tld/api/articles/48/contents` returns a single "article".
+
+
 
 You can use the api without a rewrite rule. Type e.g. `yourdomain.tld/index.php?api=categories/4`.
 
@@ -63,7 +67,7 @@ Assuming public content header `Access-Control-Allow-Origin: *` is always sent.
 
 The JSON resembles the category structure of [Redaxo](https://redaxo.org). But it can only return 1 category level and its immediate sub categories in 1 response.
 
-Only articles and categories with status "online" are returned.
+If requested by categories only categories and sub articles with status "online" are returned. If requestied a single article, "offline" articles are also returned. (The response contains a field "status" for each article with value `1` for "online" and `0` for "offline".)
 
 Currently _all_ "metainfo" data available is included.
 

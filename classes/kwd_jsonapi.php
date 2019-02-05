@@ -171,7 +171,7 @@ abstract class kwd_jsonapi {
 						else if ($this->startsWith($m,'art_')) $flagMetaInfo = true;
 					}
 					// remove this line when offlines possible:
-					if ($m === 'status') $field = '';
+					// if ($m === 'status') $field = '';
 
 					if ($field) {
 						$temp = $artOrCat->getValue($m);
